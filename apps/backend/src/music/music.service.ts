@@ -65,6 +65,62 @@ export class MusicService {
   }
 
   async getMusicStream(res: Response, cidStr: string) {
+    const manifestCID = CID.parse(cidStr);
+    const stream = this.fs.cat(manifestCID);
+
+    // Récupérer tout le contenu du stream pour le manifest
+    const chunks: Uint8Array[] = [];
+    for await (const chunk of stream) {
+        chunks.push(chunk);
+    }
+    
+    // Convertir le buffer en chaîne UTF-8
+    const manifestData = Buffer.concat(chunks).toString('utf-8'); 
+    console.log('Manifest Data:', manifestData); // Vérifiez le contenu ici
+
+    let chunkCIDs: string[];
+
+    try {
+        // Parse le contenu en JSON
+        chunkCIDs = JSON.parse(manifestData);
+    } catch (error) {
+        console.error('Erreur lors du parsing du manifest JSON:', error);
+        res.status(500).send('Erreur lors de la récupération du fichier.');
+        return; // Arrêtez l'exécution si le parsing échoue
+    }
+
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Accept-Ranges', 'bytes');
+
+    // Pour chaque CID de chunk, lisez et déchiffrez le contenu
+    try {
+        for (const chunkCID of chunkCIDs) {
+            const chunkStream = this.fs.cat(CID.parse(chunkCID));
+
+            // Convertir chaque chunk en buffer et déchiffrer
+            const chunkBuffer = await streamToBuffer(chunkStream); // Fonction pour convertir le stream en buffer
+            const encryptedChunk = chunkBuffer.toString('utf-8'); // Convertir en chaîne
+            
+            // Déchiffrement de chaque morceau
+            const decryptedBytes = CryptoJS.AES.decrypt(encryptedChunk, this.secretKey);
+            const decryptedData = decryptedBytes.toString(CryptoJS.enc.Utf8); // Convertir en texte
+
+            // Vérifier si le déchiffrement a réussi
+            if (!decryptedData) {
+                throw new Error('Le déchiffrement a échoué ou les données sont vides.');
+            }
+
+            // Écrire le contenu déchiffré dans la réponse
+            res.write(Buffer.from(decryptedData, 'base64')); // Écrire le contenu déchiffré
+        }
+        res.end(); // Terminer la réponse
+    } catch (error) {
+        console.error('Erreur lors du streaming du fichier:', error);
+        res.status(500).send('Erreur lors du streaming du fichier.');
+    }
+}
+
+  async getMusicStream2(res: Response, cidStr: string) {
     const cid = CID.parse(cidStr);
     const stream = this.fs.cat(cid);
 
@@ -75,17 +131,22 @@ export class MusicService {
         // Streaming des données
         for await (const chunk of stream) {
             // Déchiffrement du chunk
-            const encryptedData = chunk.toString('utf-8'); // Convertir le chunk en chaîne
-            const decryptedBytes = CryptoJS.AES.decrypt(encryptedData, this.secretKey);
-            const decryptedData = decryptedBytes.toString(CryptoJS.enc.Utf8); // Convertir en texte
+            //const encryptedData = chunk.toString('utf-8'); // Convertir le chunk en chaîne
+            //console.log('encryptedData => ', encryptedData);
+
+            const decryptedBytes = CryptoJS.AES.decrypt(Buffer.from(chunk, 'base64').toString(), this.secretKey);
+
+            console.log('decryptedBytes => ', Buffer.from(decryptedBytes.toString(CryptoJS.enc.Utf8)));
+
+            //const decryptedData = decryptedBytes.toString(CryptoJS.enc.Utf8); // Convertir en texte
 
             // Vérifier si le déchiffrement a réussi
-            if (!decryptedData) {
+            /*if (!decryptedData) {
                 throw new Error('Le déchiffrement a échoué ou les données sont vides.');
-            }
+            }*/
 
             // Écrire le contenu déchiffré dans la réponse
-            res.write(Buffer.from(decryptedData, 'utf-8')); // Écrire le contenu déchiffré
+            res.write(Buffer.from(decryptedBytes.toString(CryptoJS.enc.Utf8), 'base64')); // Écrire le contenu déchiffré
         }
         res.end(); // Terminer la réponse
     } catch (error) {
@@ -94,7 +155,7 @@ export class MusicService {
     }
 }
 
-  async getMusicStreamWorking(res: Response, cidStr: string) {
+  async getMusicStreamWork(res: Response, cidStr: string) {
     const cid = CID.parse(cidStr);
     const stream = this.fs.cat(cid);
 
@@ -104,6 +165,7 @@ export class MusicService {
     try {
         const chunks: Uint8Array[] = [];
         for await (const chunk of stream) {
+            console.log(chunk);
             chunks.push(chunk);
         }
 
