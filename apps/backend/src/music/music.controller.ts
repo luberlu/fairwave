@@ -2,22 +2,46 @@ import { Controller, Post, Get, Body, Param, UseInterceptors, UploadedFile, Res 
 import { MusicService } from './music.service.js';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
+import CryptoJS from 'crypto-js';
+
 
 @Controller('music')
 export class MusicController {
   constructor(private readonly musicService: MusicService) {}
 
+  private secretKey = 'test';
+
   // Endpoint pour uploader un fichier sur IPFS
-  @Post('upload')
+  @Post('upload2')
   @UseInterceptors(FileInterceptor('file')) // Intercepteur pour gérer le fichier
-  async uploadMusic(
+  async uploadMusic2(
     @Body() body: { title: string }, // Récupère le titre depuis le corps
     @UploadedFile() file: Express.Multer.File // Récupère le fichier uploadé
   ) {
-    // Appel du service pour uploader le fichier sur IPFS
-    const cid = await this.musicService.uploadToIPFS(file.buffer); // Utilise le contenu du fichier
+    // Chiffrement du fichier avec AES
+    const encrypted = CryptoJS.AES.encrypt(file.buffer.toString('base64'), this.secretKey).toString();
+
+    // Le texte chiffré peut être directement stocké comme une chaîne
+    const cid = await this.musicService.uploadToIPFS(Buffer.from(encrypted, 'utf-8')); // Utiliser le contenu chiffré
     return { title: body.title, ipfsHash: cid };
   }
+
+  @Post('upload')
+@UseInterceptors(FileInterceptor('file')) // Intercepteur pour gérer le fichier
+async uploadMusic(
+  @Body() body: { title: string }, // Récupère le titre depuis le corps
+  @UploadedFile() file: Express.Multer.File // Récupère le fichier uploadé
+) {
+  // Chiffrement du fichier avec AES
+  const encrypted = CryptoJS.AES.encrypt(
+    CryptoJS.lib.WordArray.create(file.buffer), // Utiliser le buffer directement
+    this.secretKey
+  ).toString();
+
+  // Le texte chiffré peut être directement stocké comme une chaîne
+  const cid = await this.musicService.uploadToIPFS(Buffer.from(encrypted, 'utf-8')); // Utiliser le contenu chiffré
+  return { title: body.title, ipfsHash: cid };
+}
 
   // Endpoint pour récupérer un fichier depuis IPFS par son CID
   /*@Get(':cid')
