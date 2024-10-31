@@ -22,6 +22,9 @@ importers:
       '@nestjs/platform-express':
         specifier: ^10.0.0
         version: 10.4.6(@nestjs/common@10.4.6(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/core@10.4.6)
+      blockstore-fs:
+        specifier: ^2.0.2
+        version: 2.0.2
       helia:
         specifier: ^5.1.0
         version: 5.1.0(react-native@0.76.1(@babel/core@7.26.0)(@babel/preset-env@7.26.0(@babel/core@7.26.0))(encoding@0.1.13)(react@18.3.1))
@@ -3308,6 +3311,9 @@ packages:
   blockstore-datastore-adapter@5.0.0:
     resolution: {integrity: sha512-gQ3aVE83HUnIRtxUh3E5iC8XHY1aWFwvklIa6rRbZGAw8KxnFgJRO1KjPBYrZuyIqstEcvQCGtzC+6LiKSF4KQ==}
     engines: {node: '>=16.0.0', npm: '>=7.0.0'}
+
+  blockstore-fs@2.0.2:
+    resolution: {integrity: sha512-g4l4cJZqcLGPD+iOSb9DYWClAiSSGKsN7V13PTZYqQFHeg96phG15jNi9ql3urrlVC/OTzPB95FXK+GP0TX8Tw==}
 
   body-parser@1.20.3:
     resolution: {integrity: sha512-7rAxByjUMqQ3/bHJy7D6OGXvx/MMc4IqBn/X0fcM1QUcAItpZrBEYhWGem+tzXH90c+G01ypMcYJBO9Y30203g==}
@@ -7279,6 +7285,10 @@ packages:
 
   std-env@3.7.0:
     resolution: {integrity: sha512-JPbdCEQLj1w5GilpiHAx3qJvFndqybBysA3qUOnznweH4QbNYUsW/ea8QzSrnh0vNsezMMw5bcVool8lM0gwzg==}
+
+  steno@4.0.2:
+    resolution: {integrity: sha512-yhPIQXjrlt1xv7dyPQg2P17URmXbuM5pdGkpiMB3RenprfiBlvK415Lctfe0eshk90oA7/tNq7WEiMK8RSP39A==}
+    engines: {node: '>=18'}
 
   stream-to-it@0.2.4:
     resolution: {integrity: sha512-4vEbkSs83OahpmBybNJXlJd7d6/RxzkkSdT3I0mnGt79Xd2Kk+e1JqbvAvsQfCeKj3aKb0QIWkyK3/n0j506vQ==}
@@ -12668,6 +12678,16 @@ snapshots:
       it-pushable: 3.2.3
       multiformats: 11.0.2
 
+  blockstore-fs@2.0.2:
+    dependencies:
+      interface-blockstore: 5.3.1
+      interface-store: 6.0.2
+      it-glob: 3.0.1
+      it-map: 3.1.1
+      it-parallel-batch: 3.0.6
+      multiformats: 13.3.1
+      steno: 4.0.2
+
   body-parser@1.20.3:
     dependencies:
       bytes: 3.1.2
@@ -17792,6 +17812,8 @@ snapshots:
   statuses@2.0.1: {}
 
   std-env@3.7.0: {}
+
+  steno@4.0.2: {}
 
   stream-to-it@0.2.4:
     dependencies:
