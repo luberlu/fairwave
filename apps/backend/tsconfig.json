@@ -1,21 +1,24 @@
 {
   "compilerOptions": {
-    "module": "commonjs",
-    "declaration": true,
-    "removeComments": true,
-    "emitDecoratorMetadata": true,
-    "experimentalDecorators": true,
-    "allowSyntheticDefaultImports": true,
-    "target": "ES2021",
-    "sourceMap": true,
-    "outDir": "./dist",
-    "baseUrl": "./",
-    "incremental": true,
-    "skipLibCheck": true,
-    "strictNullChecks": false,
-    "noImplicitAny": false,
-    "strictBindCallApply": false,
-    "forceConsistentCasingInFileNames": false,
-    "noFallthroughCasesInSwitch": false
-  }
+    "module": "ESNext", // Utilise ESNext pour les modules ESM
+    "moduleResolution": "node", // Résolution des modules comme en Node.js
+    "declaration": true, // Génère des fichiers .d.ts pour les types
+    "removeComments": true, // Supprime les commentaires dans le code compilé
+    "emitDecoratorMetadata": true, // Nécessaire pour les décorateurs
+    "experimentalDecorators": true, // Active les décorateurs expérimentaux
+    "allowSyntheticDefaultImports": true, // Permet l'importation par défaut pour les modules CommonJS
+    "target": "ES2021", // Cible ES2021 pour la compatibilité moderne
+    "sourceMap": true, // Génère des fichiers .map pour le débogage
+    "outDir": "./dist", // Dossier de sortie des fichiers compilés
+    "baseUrl": "./", // Base pour la résolution des modules
+    "incremental": true, // Active la compilation incrémentale
+    "skipLibCheck": true, // Ignore les vérifications des types des fichiers de déclaration
+    "strict": true, // Active toutes les options strictes (peut être configuré selon les besoins)
+    "strictNullChecks": true, // Active les vérifications strictes pour les valeurs null et undefined
+    "noImplicitAny": true, // Interdit les types implicites 'any'
+    "forceConsistentCasingInFileNames": true, // Force la consistance des noms de fichiers
+    "noFallthroughCasesInSwitch": true // Empêche les cas de chute dans les switch
+  },
+  "include": ["src/**/*"], // Inclut tous les fichiers source dans le dossier src
+  "exclude": ["node_modules", "dist"] // Exclut les dossiers node_modules et dist
 }
