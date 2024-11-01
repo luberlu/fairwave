@@ -2,6 +2,7 @@ import { Controller, Post, Get, Body, Param, UseInterceptors, UploadedFile, Res 
 import { MusicService } from './music.service.js';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
+import { parseBuffer } from 'music-metadata';
 import CryptoJS from 'crypto-js';
 
 
@@ -20,6 +21,10 @@ export class MusicController {
       const chunkSize = 1024 * 1024; // 1 Mo
       const chunkCIDs: string[] = [];
 
+      // Récupérer les métadonnées
+      const metadata = await parseBuffer(file.buffer);
+      const duration = metadata.format.duration; // Récupérer la durée
+
       for (let i = 0; i < file.buffer.length; i += chunkSize) {
           const chunk = file.buffer.slice(i, i + chunkSize);
 
@@ -34,7 +39,12 @@ export class MusicController {
       }
 
       // Créer un fichier JSON avec les CIDs
-      const manifest = JSON.stringify(chunkCIDs);
+      const manifest = JSON.stringify({
+        title: body.title,
+        duration: duration,
+        chunks: chunkCIDs
+      });
+
       const manifestCID = await this.musicService.uploadToIPFS(Buffer.from(manifest, 'utf-8'));
 
       return { title: body.title, ipfsHash: manifestCID }; // Retourner le CID principal

@@ -6,6 +6,7 @@
     let status = '';
     let audioElement: HTMLAudioElement | null = null; // Référence à l'élément audio
     let duration: number | null = null; // Durée de l'audio
+    let title: string | null = null; // Titre de l'audio
 
     async function fetchMusic() {
         if (!cid) {
@@ -18,7 +19,9 @@
 
             if (!response.ok) throw new Error('Erreur lors de la récupération du fichier.');
 
-            duration = parseFloat(response.headers.get('X-Duration') || '0'); // Récupérer la durée des en-têtes
+            // Récupérer la durée et le titre des en-têtes
+            duration = parseFloat(response.headers.get('X-Duration') || '0');
+            title = response.headers.get('X-Title'); // Récupérer le titre
             audioUrl = `/api/music/stream/${cid}`;
             status = "Fichier récupéré avec succès !";
         } catch (error) {
@@ -44,7 +47,10 @@
 <!-- Affiche toujours le lecteur audio -->
 <div>
     <h2>Lecteur Audio :</h2>
-    <audio bind:this={audioElement} controls src={ audioUrl }>
+    {#if title}
+        <h3>Titre : {title}</h3> <!-- Affiche le titre ici -->
+    {/if}
+    <audio bind:this={audioElement} controls src={audioUrl}>
         <track kind="captions" />
     </audio>
     <p>Streaming à partir de CID : {cid}</p>

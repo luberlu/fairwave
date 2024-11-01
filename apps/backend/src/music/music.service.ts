@@ -3,7 +3,6 @@ import { Helia, createHelia } from 'helia';
 import { unixfs, UnixFS } from '@helia/unixfs';
 import { CID } from 'multiformats/cid';
 import { Response } from 'express';
-import { parseBuffer } from 'music-metadata';
 import { FsBlockstore } from 'blockstore-fs'; // Importer le module de stockage sur disque
 import CryptoJS from 'crypto-js';
 
@@ -38,18 +37,33 @@ export class MusicService {
         return; // Arrêtez l'exécution si le manifest échoue
     }
 
-    const chunkCIDs = this.parseManifestData(manifestData);
+    let metadata: { title: string; duration: number; chunks: string[] };
+
+    try {
+        // Extraire les métadonnées du manifest
+        metadata = JSON.parse(manifestData);
+    } catch (error) {
+        console.error('Erreur lors du parsing des métadonnées du manifest:', error);
+        res.status(500).send('Erreur lors du parsing des métadonnées.');
+        return; // Arrêtez l'exécution si le parsing échoue
+    }
+
+    const chunkCIDs = metadata.chunks;
 
     if (!chunkCIDs) {
-        res.status(500).send('Erreur lors du parsing du manifest JSON.');
-        return; // Arrêtez l'exécution si le parsing échoue
+        res.status(500).send('Erreur lors de la récupération des chunks.');
+        return; // Arrêtez l'exécution si les chunks échouent
     }
 
     res.setHeader('Content-Type', 'audio/mpeg');
     res.setHeader('Accept-Ranges', 'bytes');
 
+    // Optionnel: inclure des en-têtes supplémentaires, comme le titre et la durée
+    res.setHeader('X-Title', metadata.title || 'Unknown Title');
+    res.setHeader('X-Duration', metadata.duration ? metadata.duration.toString() : 'unknown');
+
     try {
-          for (const chunkCID of chunkCIDs) {
+        for (const chunkCID of chunkCIDs) {
             const chunkStream = this.fs.cat(CID.parse(chunkCID));
 
             // Traitement de chaque chunk
@@ -65,7 +79,7 @@ export class MusicService {
         console.error('Erreur lors du streaming du fichier:', error);
         res.status(500).send('Erreur lors du streaming du fichier.');
     }
-  }
+}
 
   private decryptChunk(chunkBuffer: Uint8Array): Buffer {
     try {
