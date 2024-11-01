@@ -30,33 +30,28 @@ export class MusicService {
     return cid.toString();
   }
 
-  async getMusicStream(res: Response, cidStr: string, encryptionKey: string): Promise<StreamableFile| null | undefined> {
+  async getMusicStream(res: Response, cidStr: string, encryptionKey: string): Promise<void> {
     const manifestCID = CID.parse(cidStr);
     const manifestData = await this.getManifestData(manifestCID);
 
-    const stream = new Readable();
-    stream._read = () => {};
-
     if (!manifestData) {
         res.status(500).send('Erreur lors de la récupération du fichier.');
-        return null; // Arrêtez l'exécution si le manifest échoue
+        return; // Arrêtez l'exécution si le manifest échoue
     }
 
-    console.log('encrypt key !! => ', encryptionKey);
-    if(!encryptionKey){
-      res.status(500).send('Erreur lors de la récupération du fichier : pas de clé secrète');
-      return null;
+    if (!encryptionKey) {
+        res.status(400).send('Erreur : clé de cryptage manquante.');
+        return;
     }
 
     let metadata: { title: string; duration: number; chunks: string[] };
 
     try {
-        // Extraire les métadonnées du manifest
         metadata = JSON.parse(manifestData);
     } catch (error) {
         console.error('Erreur lors du parsing des métadonnées du manifest:', error);
         res.status(500).send('Erreur lors du parsing des métadonnées.');
-        return; // Arrêtez l'exécution si le parsing échoue
+        return;
     }
 
     const chunkCIDs = metadata.chunks;
@@ -67,44 +62,36 @@ export class MusicService {
     }
 
     res.setHeader('Content-Type', 'audio/mpeg');
-    res.setHeader('Accept-Ranges', 'bytes');
-
-    // Optionnel: inclure des en-têtes supplémentaires, comme le titre et la durée
     res.setHeader('X-Title', metadata.title || 'Unknown Title');
     res.setHeader('X-Duration', metadata.duration ? metadata.duration.toString() : 'unknown');
-    
 
-    try {
-      let isFirstChunk = true; // Indicateur pour le premier chunk
+    let that = this;
 
-        for (const chunkCID of chunkCIDs) {
-          console.log('chunkCID => ', chunkCID);
-            const chunkStream = this.fs.cat(CID.parse(chunkCID));
-            
-            // Traitement de chaque chunk
-            const chunkBuffer = await streamToBuffer(chunkStream);
-            const decryptedData = this.decryptChunk(chunkBuffer, encryptionKey); // Déchiffement
+    const stream = new Readable({
+        async read() {
+            let isFirstChunk = true; // Indicateur pour le premier chunk
 
-            if (isFirstChunk) {
-              if (!this.isValidAudio(Buffer.from(decryptedData))) {
-                res.status(400).send('Le fichier audio est invalide.'); // Renvoie une erreur si le fichier n'est pas valide
-                return;
-              }
-              isFirstChunk = false; // Passer à false après la première vérification
-          }
+            for (const chunkCID of chunkCIDs) {
+                const chunkStream = that.fs.cat(CID.parse(chunkCID));
+                const chunkBuffer = await streamToBuffer(chunkStream);
+                const decryptedData = that.decryptChunk(chunkBuffer, encryptionKey);
 
-          stream.push(Buffer.from(decryptedData.toString(), 'base64'));
+                if (isFirstChunk) {
+                    if (!that.isValidAudio(Buffer.from(decryptedData))) {
+                        res.status(400).send('Le fichier audio est invalide.');
+                        return;
+                    }
+                    isFirstChunk = false; // Passer à false après la première vérification
+                }
+
+                stream.push(Buffer.from(decryptedData)); // Pousse le chunk déchiffré dans le stream
+            }
+            this.push(null); // Indique que le stream est terminé
         }
+    });
 
-        stream.push(null); // Indique que le stream est terminé
-    } catch (error) {
-        console.error('Erreur lors du streaming du fichier:', error);
-        res.status(500).send('Erreur lors du streaming du fichier.');
-    }
-
-    res.send(stream.read());
-    // Utiliser res.send pour renvoyer le flux
-    
+    // Pipe le stream à la réponse
+    stream.pipe(res);
 }
 
 // Fonction pour vérifier si le buffer audio est valide
