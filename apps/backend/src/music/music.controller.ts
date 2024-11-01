@@ -1,21 +1,18 @@
-import { Controller, Post, Get, Body, Param, UseInterceptors, UploadedFile, Res } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, UseInterceptors, UploadedFile, Res, Headers } from '@nestjs/common';
 import { MusicService } from './music.service.js';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { parseBuffer } from 'music-metadata';
 import CryptoJS from 'crypto-js';
 
-
 @Controller('music')
 export class MusicController {
   constructor(private readonly musicService: MusicService) {}
 
-  private secretKey = 'test';
-
   @Post('upload')
   @UseInterceptors(FileInterceptor('file'))
   async uploadMusic(
-      @Body() body: { title: string },
+      @Body() body: { title: string, secretKey: string }, // Ajout de la clé secrète dans le corps
       @UploadedFile() file: Express.Multer.File
   ) {
       const chunkSize = 1024 * 1024; // 1 Mo
@@ -31,14 +28,14 @@ export class MusicController {
           // Chiffrement du chunk
           // Convertir le chunk en base64
           const base64Chunk = chunk.toString('base64');
-          const encryptedChunk = CryptoJS.AES.encrypt(base64Chunk, this.secretKey).toString();
+          const encryptedChunk = CryptoJS.AES.encrypt(base64Chunk, body.secretKey).toString(); // Utiliser la clé fournie par l'utilisateur
 
           // Ajout du chunk chiffré à IPFS et récupération du CID
           const chunkCID = await this.musicService.uploadToIPFS(Buffer.from(encryptedChunk, 'utf-8'));
           chunkCIDs.push(chunkCID);
       }
 
-      // Créer un fichier JSON avec les CIDs
+      // Créer un fichier JSON avec les CIDs et les métadonnées
       const manifest = JSON.stringify({
         title: body.title,
         duration: duration,
@@ -51,8 +48,9 @@ export class MusicController {
   }
 
   @Get('stream/:cid')
-  async streamMusic(@Param('cid') cid: string, @Res() res: Response) {
-    await this.musicService.getMusicStream(res, cid); // Appel du service pour le streaming
+  async streamMusic(@Param('cid') cid: string, @Res() res: Response, @Headers('X-Encryption-Key') encryptionKey: string) {
+      // Assurez-vous que la clé de cryptage est utilisée pour le déchiffrement dans votre logique
+      await this.musicService.getMusicStream(res, cid, encryptionKey); // Modifiez la signature de la méthode getMusicStream pour accepter la clé
   }
-  
+
 }

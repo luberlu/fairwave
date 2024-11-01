@@ -1,23 +1,29 @@
 <script lang="ts">
     import { onDestroy } from 'svelte';
-  
+
     let cid = '';
     let audioUrl: string | null = null; // URL pour le streaming
     let status = '';
     let audioElement: HTMLAudioElement | null = null; // Référence à l'élément audio
     let duration: number | null = null; // Durée de l'audio
     let title: string | null = null; // Titre de l'audio
+    let encryptionKey = ''; // Clé de cryptage
 
     async function fetchMusic() {
-        if (!cid) {
-            status = "Veuillez entrer un CID.";
+        if (!cid || !encryptionKey) {
+            status = "Veuillez entrer un CID et une clé de cryptage.";
             return;
         }
 
         try {
-            const response = await fetch(`/api/music/stream/${cid}`);
+            const response = await fetch(`/api/music/stream/${cid}`, {
+                method: 'GET',
+                headers: {
+                    'X-Encryption-Key': encryptionKey // Inclure la clé dans l'en-tête
+                }
+            });
 
-            if (!response.ok) throw new Error('Erreur lors de la récupération du fichier.');
+            if (!response.ok) throw new Error(await response.text()); // Récupérer le message d'erreur
 
             // Récupérer la durée et le titre des en-têtes
             duration = parseFloat(response.headers.get('X-Duration') || '0');
@@ -26,7 +32,7 @@
             status = "Fichier récupéré avec succès !";
         } catch (error) {
             console.error('Erreur lors de la récupération du fichier:', error);
-            status = "Erreur lors de la récupération du fichier.";
+            status = `Erreur lors de la récupération du fichier : ${error.message}`;
         }
     }
 
@@ -37,11 +43,12 @@
         }
     });
 </script>
-  
+
 <h1>Récupérer un morceau</h1>
 <input type="text" placeholder="CID" bind:value={cid} />
+<input type="text" placeholder="Clé de cryptage" bind:value={encryptionKey} />
 <button on:click={fetchMusic}>Récupérer</button>
-  
+
 <p>{status}</p>
 
 <!-- Affiche toujours le lecteur audio -->

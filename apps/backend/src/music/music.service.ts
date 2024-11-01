@@ -28,7 +28,7 @@ export class MusicService {
     return cid.toString();
   }
 
-  async getMusicStream(res: Response, cidStr: string) {
+  async getMusicStream(res: Response, cidStr: string, encryptionKey: string) {
     const manifestCID = CID.parse(cidStr);
     const manifestData = await this.getManifestData(manifestCID);
 
@@ -68,10 +68,10 @@ export class MusicService {
 
             // Traitement de chaque chunk
             const chunkBuffer = await streamToBuffer(chunkStream);
-            const decryptedData = this.decryptChunk(chunkBuffer); // Déchiffement
+            const decryptedData = this.decryptChunk(chunkBuffer, encryptionKey); // Déchiffement
 
-            // Écriture du chunk déchiffré dans la réponse
-            res.write(Buffer.from(decryptedData.toString(), 'base64')); // Utilisation de 'base64'
+               // Écriture du chunk déchiffré dans la réponse
+              res.write(Buffer.from(decryptedData.toString(), 'base64')); // Utilisation de 'base64'
         }
 
         res.end(); // Terminer la réponse après tous les chunks
@@ -81,20 +81,21 @@ export class MusicService {
     }
 }
 
-  private decryptChunk(chunkBuffer: Uint8Array): Buffer {
-    try {
-        const encryptedData = Buffer.from(chunkBuffer).toString('utf-8'); // Convertir le buffer en chaîne
+// Modifiez également la fonction de déchiffrement pour accepter la clé
+private decryptChunk(chunkBuffer: Uint8Array, encryptionKey: string): Buffer {
+  try {
+      const encryptedData = Buffer.from(chunkBuffer).toString('utf-8'); // Convertir le buffer en chaîne
+      console.log('encryptionKey =< ', encryptionKey);
+      const decryptedBytes = CryptoJS.AES.decrypt(encryptedData, encryptionKey); // Utiliser la clé fournie
+      const decryptedData = decryptedBytes.toString(CryptoJS.enc.Base64); // Convertir en base64
 
-        const decryptedBytes = CryptoJS.AES.decrypt(encryptedData, this.secretKey);
-        const decryptedData = decryptedBytes.toString(CryptoJS.enc.Base64); // Convertir en base64
-
-        // Retourner le Buffer déchiffré
-        return Buffer.from(decryptedData, 'base64'); // Convertir en Buffer
-    } catch (error) {
-        console.error('Erreur lors du déchiffrement du chunk:', error);
-        throw error; // Lancer l'erreur pour gestion ultérieure
-    }
+      // Retourner le Buffer déchiffré
+      return Buffer.from(decryptedData, 'base64'); // Convertir en Buffer
+  } catch (error) {
+      console.error('Erreur lors du déchiffrement du chunk:', error);
+      throw error; // Lancer l'erreur pour gestion ultérieure
   }
+}
 
   private async getManifestData(manifestCID: CID): Promise<string | null> {
       const stream = this.fs.cat(manifestCID);
