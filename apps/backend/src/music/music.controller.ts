@@ -12,18 +12,22 @@ export class MusicController {
   private secretKey = 'test';
 
   @Post('upload')
-  @UseInterceptors(FileInterceptor('file'))
-  async uploadMusic(
-    @Body() body: { title: string }, // Récupère le titre depuis le corps
-    @UploadedFile() file: Express.Multer.File // Récupère le fichier uploadé
-  ){
-    const chunkSize = 1024 * 1024; // 64 Ko
-    const chunkCIDs: string[] = []; // Tableau pour stocker les CIDs des morceaux
+@UseInterceptors(FileInterceptor('file'))
+async uploadMusic(
+    @Body() body: { title: string },
+    @UploadedFile() file: Express.Multer.File
+) {
+    const chunkSize = 1024 * 1024; // 1 Mo
+    const chunkCIDs: string[] = [];
 
     for (let i = 0; i < file.buffer.length; i += chunkSize) {
         const chunk = file.buffer.slice(i, i + chunkSize);
-        const encryptedChunk = CryptoJS.AES.encrypt(chunk.toString('base64'), this.secretKey).toString();
-        
+
+        // Chiffrement du chunk
+        // Convertir le chunk en base64
+        const base64Chunk = chunk.toString('base64');
+        const encryptedChunk = CryptoJS.AES.encrypt(base64Chunk, this.secretKey).toString();
+
         // Ajout du chunk chiffré à IPFS et récupération du CID
         const chunkCID = await this.musicService.uploadToIPFS(Buffer.from(encryptedChunk, 'utf-8'));
         chunkCIDs.push(chunkCID);

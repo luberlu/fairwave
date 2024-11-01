@@ -66,6 +66,122 @@ export class MusicService {
 
   async getMusicStream(res: Response, cidStr: string) {
     const manifestCID = CID.parse(cidStr);
+    const manifestData = await this.getManifestData(manifestCID);
+
+    if (!manifestData) {
+        res.status(500).send('Erreur lors de la récupération du fichier.');
+        return; // Arrêtez l'exécution si le manifest échoue
+    }
+
+    const chunkCIDs = this.parseManifestData(manifestData);
+    if (!chunkCIDs) {
+        res.status(500).send('Erreur lors du parsing du manifest JSON.');
+        return; // Arrêtez l'exécution si le parsing échoue
+    }
+
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Accept-Ranges', 'bytes');
+
+    // Pour chaque CID de chunk, lisez et déchiffrez le contenu
+    let i = 0;
+    try {
+      for (const chunkCID of chunkCIDs) {
+        const chunkStream = this.fs.cat(CID.parse(chunkCID));
+    
+        for await (const chunkBuffer of chunkStream) {
+            const decryptedData = this.decryptChunk(chunkBuffer); // Déchiffement
+    
+            // Écriture du chunk déchiffré dans la réponse
+            console.log('iter = > ', i);
+            i++;
+          
+            res.write(Buffer.from(decryptedData.toString(), 'base64'));
+            //res.write(Buffer.from(decryptedData)); // Écrire le buffer directement
+        }
+    }
+    res.end(); // Terminer la réponse après tous les chunks
+    } catch (error) {
+        console.error('Erreur lors du streaming du fichier:', error);
+        res.status(500).send('Erreur lors du streaming du fichier.');
+    }
+}
+
+private decryptChunk(chunkBuffer: Uint8Array): Buffer {
+  try {
+      const encryptedData = Buffer.from(chunkBuffer).toString('utf-8'); // Convertir le buffer en chaîne
+
+      const decryptedBytes = CryptoJS.AES.decrypt(encryptedData, this.secretKey);
+      const decryptedData = decryptedBytes.toString(CryptoJS.enc.Base64); // Convertir en base64
+
+      // Retourner le Buffer déchiffré
+      return Buffer.from(decryptedData, 'base64'); // Convertir en Buffer
+  } catch (error) {
+      console.error('Erreur lors du déchiffrement du chunk:', error);
+      throw error; // Lancer l'erreur pour gestion ultérieure
+  }
+}
+
+
+
+  private async getManifestData(manifestCID: CID): Promise<string | null> {
+      const stream = this.fs.cat(manifestCID);
+      const chunks: Uint8Array[] = [];
+
+      for await (const chunk of stream) {
+          chunks.push(chunk);
+      }
+
+      // Convertir le buffer en chaîne UTF-8
+      return Buffer.concat(chunks).toString('utf-8');
+  }
+
+  private parseManifestData(manifestData: string): string[] | null {
+      try {
+          console.log('Manifest Data:', manifestData); // Vérifiez le contenu ici
+          return JSON.parse(manifestData);
+      } catch (error) {
+          console.error('Erreur lors du parsing du manifest JSON:', error);
+          return null;
+      }
+  }
+
+  /*private async streamChunks(res: Response, chunkCIDs: string[]) {
+      try {
+          for (const chunkCID of chunkCIDs) {
+              const chunkStream = this.fs.cat(CID.parse(chunkCID));
+
+              // Déchiffrement de chaque morceau et envoi en streaming
+              for await (const chunkBuffer of chunkStream) {
+                  const decryptedData = await this.decryptChunk(chunkBuffer);
+                  if (!decryptedData) {
+                      throw new Error('Le déchiffrement a échoué ou les données sont vides.');
+                  }
+
+                  // Écrire le contenu déchiffré dans la réponse
+                  res.write(Buffer.from(decryptedData, 'base64')); // Écrire le contenu déchiffré
+              }
+          }
+          res.end(); // Terminer la réponse après tous les chunks
+      } catch (error) {
+          console.error('Erreur lors du streaming du fichier:', error);
+          res.status(500).send('Erreur lors du streaming du fichier.');
+      }
+  }*/
+
+  private async decryptChunk2(chunkBuffer: Uint8Array): Promise<string | null> {
+      try {
+          // Déchiffement
+          const encryptedData = Buffer.from(chunkBuffer.toString()); // Convertir le buffer en chaîne
+          const decryptedBytes = CryptoJS.AES.decrypt(encryptedData.toString(), this.secretKey);
+          return decryptedBytes.toString(CryptoJS.enc.Utf8); // Convertir en texte
+      } catch (error) {
+          console.error('Erreur lors du déchiffrement du chunk:', error);
+          return null;
+      }
+  }
+
+  async getMusicStream10(res: Response, cidStr: string) {
+    const manifestCID = CID.parse(cidStr);
     const stream = this.fs.cat(manifestCID);
 
     // Récupérer tout le contenu du stream pour le manifest
@@ -97,21 +213,22 @@ export class MusicService {
         for (const chunkCID of chunkCIDs) {
             const chunkStream = this.fs.cat(CID.parse(chunkCID));
 
-            // Convertir chaque chunk en buffer et déchiffrer
-            const chunkBuffer = await streamToBuffer(chunkStream); // Fonction pour convertir le stream en buffer
-            const encryptedChunk = chunkBuffer.toString('utf-8'); // Convertir en chaîne
+            for await (const chunk of chunkStream) {
+              const encryptedChunk = chunk.toString('utf-8'); // Convertir en chaîne
             
-            // Déchiffrement de chaque morceau
-            const decryptedBytes = CryptoJS.AES.decrypt(encryptedChunk, this.secretKey);
-            const decryptedData = decryptedBytes.toString(CryptoJS.enc.Utf8); // Convertir en texte
+              // Déchiffrement de chaque morceau
+              const decryptedBytes = CryptoJS.AES.decrypt(encryptedChunk, this.secretKey);
+              const decryptedData = decryptedBytes.toString(CryptoJS.enc.Utf8); // Convertir en texte
 
-            // Vérifier si le déchiffrement a réussi
-            if (!decryptedData) {
-                throw new Error('Le déchiffrement a échoué ou les données sont vides.');
+              // Vérifier si le déchiffrement a réussi
+              if (!decryptedData) {
+                  throw new Error('Le déchiffrement a échoué ou les données sont vides.');
+              }
+
+              // Écrire le contenu déchiffré dans la réponse
+                res.write(Buffer.from(decryptedData, 'base64'));
             }
-
-            // Écrire le contenu déchiffré dans la réponse
-            res.write(Buffer.from(decryptedData, 'base64')); // Écrire le contenu déchiffré
+            
         }
         res.end(); // Terminer la réponse
     } catch (error) {
