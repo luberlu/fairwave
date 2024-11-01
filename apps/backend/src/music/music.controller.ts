@@ -22,18 +22,24 @@ export class MusicController {
       const metadata = await parseBuffer(file.buffer);
       const duration = metadata.format.duration; // Récupérer la durée
 
+      console.log('ici1');
+
       for (let i = 0; i < file.buffer.length; i += chunkSize) {
           const chunk = file.buffer.slice(i, i + chunkSize);
+          console.log('ici3');
 
           // Chiffrement du chunk
           // Convertir le chunk en base64
           const base64Chunk = chunk.toString('base64');
+          console.log('ma clé screte => ', body.secretKey);
           const encryptedChunk = CryptoJS.AES.encrypt(base64Chunk, body.secretKey).toString(); // Utiliser la clé fournie par l'utilisateur
 
           // Ajout du chunk chiffré à IPFS et récupération du CID
           const chunkCID = await this.musicService.uploadToIPFS(Buffer.from(encryptedChunk, 'utf-8'));
           chunkCIDs.push(chunkCID);
       }
+
+      console.log('ici2');
 
       // Créer un fichier JSON avec les CIDs et les métadonnées
       const manifest = JSON.stringify({

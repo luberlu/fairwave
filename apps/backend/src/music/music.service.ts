@@ -2,9 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { Helia, createHelia } from 'helia';
 import { unixfs, UnixFS } from '@helia/unixfs';
 import { CID } from 'multiformats/cid';
-import { Response } from 'express';
+import { Response,  } from 'express';
 import { FsBlockstore } from 'blockstore-fs'; // Importer le module de stockage sur disque
 import CryptoJS from 'crypto-js';
+import { Readable } from 'stream';
+import { StreamableFile } from '@nestjs/common';
 
 @Injectable()
 export class MusicService {
@@ -28,13 +30,22 @@ export class MusicService {
     return cid.toString();
   }
 
-  async getMusicStream(res: Response, cidStr: string, encryptionKey: string) {
+  async getMusicStream(res: Response, cidStr: string, encryptionKey: string): Promise<StreamableFile| null | undefined> {
     const manifestCID = CID.parse(cidStr);
     const manifestData = await this.getManifestData(manifestCID);
 
+    const stream = new Readable();
+    stream._read = () => {};
+
     if (!manifestData) {
         res.status(500).send('Erreur lors de la récupération du fichier.');
-        return; // Arrêtez l'exécution si le manifest échoue
+        return null; // Arrêtez l'exécution si le manifest échoue
+    }
+
+    console.log('encrypt key !! => ', encryptionKey);
+    if(!encryptionKey){
+      res.status(500).send('Erreur lors de la récupération du fichier : pas de clé secrète');
+      return null;
     }
 
     let metadata: { title: string; duration: number; chunks: string[] };
@@ -61,31 +72,52 @@ export class MusicService {
     // Optionnel: inclure des en-têtes supplémentaires, comme le titre et la durée
     res.setHeader('X-Title', metadata.title || 'Unknown Title');
     res.setHeader('X-Duration', metadata.duration ? metadata.duration.toString() : 'unknown');
+    
 
     try {
-        for (const chunkCID of chunkCIDs) {
-            const chunkStream = this.fs.cat(CID.parse(chunkCID));
+      let isFirstChunk = true; // Indicateur pour le premier chunk
 
+        for (const chunkCID of chunkCIDs) {
+          console.log('chunkCID => ', chunkCID);
+            const chunkStream = this.fs.cat(CID.parse(chunkCID));
+            
             // Traitement de chaque chunk
             const chunkBuffer = await streamToBuffer(chunkStream);
             const decryptedData = this.decryptChunk(chunkBuffer, encryptionKey); // Déchiffement
 
-               // Écriture du chunk déchiffré dans la réponse
-              res.write(Buffer.from(decryptedData.toString(), 'base64')); // Utilisation de 'base64'
+            if (isFirstChunk) {
+              if (!this.isValidAudio(Buffer.from(decryptedData))) {
+                res.status(400).send('Le fichier audio est invalide.'); // Renvoie une erreur si le fichier n'est pas valide
+                return;
+              }
+              isFirstChunk = false; // Passer à false après la première vérification
+          }
+
+          stream.push(Buffer.from(decryptedData.toString(), 'base64'));
         }
 
-        res.end(); // Terminer la réponse après tous les chunks
+        stream.push(null); // Indique que le stream est terminé
     } catch (error) {
         console.error('Erreur lors du streaming du fichier:', error);
         res.status(500).send('Erreur lors du streaming du fichier.');
     }
+
+    res.send(stream.read());
+    // Utiliser res.send pour renvoyer le flux
+    
+}
+
+// Fonction pour vérifier si le buffer audio est valide
+private isValidAudio(buffer: Buffer): boolean {
+  // Vérifier si le buffer commence correctement
+  const id3Header = buffer.toString('utf-8', 0, 3); // Lire les premiers octets
+  return id3Header === '//v'; 
 }
 
 // Modifiez également la fonction de déchiffrement pour accepter la clé
 private decryptChunk(chunkBuffer: Uint8Array, encryptionKey: string): Buffer {
   try {
       const encryptedData = Buffer.from(chunkBuffer).toString('utf-8'); // Convertir le buffer en chaîne
-      console.log('encryptionKey =< ', encryptionKey);
       const decryptedBytes = CryptoJS.AES.decrypt(encryptedData, encryptionKey); // Utiliser la clé fournie
       const decryptedData = decryptedBytes.toString(CryptoJS.enc.Base64); // Convertir en base64
 
@@ -128,4 +160,9 @@ async function streamToBuffer(stream: AsyncIterable<Uint8Array>): Promise<Buffer
   }
   
   return Buffer.concat(chunks);
+}
+
+
+function sleep(ms: any) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }

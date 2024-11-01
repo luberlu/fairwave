@@ -28,7 +28,11 @@
             // Récupérer la durée et le titre des en-têtes
             duration = parseFloat(response.headers.get('X-Duration') || '0');
             title = response.headers.get('X-Title'); // Récupérer le titre
-            audioUrl = `/api/music/stream/${cid}`;
+            
+            // Lire les données audio à partir de la réponse
+            const audioData = await response.arrayBuffer();
+            audioUrl = URL.createObjectURL(new Blob([audioData])); // Créer un Blob pour l'URL audio
+            
             status = "Fichier récupéré avec succès !";
         } catch (error) {
             console.error('Erreur lors de la récupération du fichier:', error);
