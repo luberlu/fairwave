@@ -29,41 +29,6 @@ export class MusicService {
     return cid.toString();
   }
 
-  async getMusicStreamFirstWorking(res: Response, cidStr: string) {
-    const cid = CID.parse(cidStr);
-    const stream = this.fs.cat(cid);
-
-    // Répondre avec un flux
-    res.setHeader('Content-Type', 'audio/mpeg'); // Définir le type MIME correct
-    res.setHeader('Accept-Ranges', 'bytes'); // Indiquer que le serveur supporte les requêtes de plage
-    
-    // Obtention des métadonnées
-    let metadata: any = null;
-    let duration: number | null = null;
-
-    try {
-        const buffer = await streamToBuffer(stream); // Convertir le stream en buffer pour les métadonnées
-        metadata = await parseBuffer(buffer, { mimeType: 'audio/mpeg' });
-        duration = metadata.format.duration; // Récupérer la durée
-
-        // Envoyer la durée dans les en-têtes
-        res.setHeader('X-Duration', duration ? duration.toString() : 'unknown');
-        
-        // Récupérer à nouveau le flux pour l'envoyer
-        const newStream = this.fs.cat(cid);
-        
-        for await (const chunk of newStream) {
-            res.write(chunk); // Écrire chaque chunk dans la réponse
-        }
-        res.end(); // Terminer la réponse
-    } catch (error) {
-        console.error('Erreur lors de la récupération du fichier:', error);
-        res.status(500).send('Erreur lors de la récupération du fichier.');
-    }
-
-    res.end(); // Terminer la réponse
-  }
-
   async getMusicStream(res: Response, cidStr: string) {
     const manifestCID = CID.parse(cidStr);
     const manifestData = await this.getManifestData(manifestCID);
@@ -74,6 +39,7 @@ export class MusicService {
     }
 
     const chunkCIDs = this.parseManifestData(manifestData);
+
     if (!chunkCIDs) {
         res.status(500).send('Erreur lors du parsing du manifest JSON.');
         return; // Arrêtez l'exécution si le parsing échoue
@@ -82,46 +48,39 @@ export class MusicService {
     res.setHeader('Content-Type', 'audio/mpeg');
     res.setHeader('Accept-Ranges', 'bytes');
 
-    // Pour chaque CID de chunk, lisez et déchiffrez le contenu
-    let i = 0;
     try {
-      for (const chunkCID of chunkCIDs) {
-        const chunkStream = this.fs.cat(CID.parse(chunkCID));
-    
-        for await (const chunkBuffer of chunkStream) {
+          for (const chunkCID of chunkCIDs) {
+            const chunkStream = this.fs.cat(CID.parse(chunkCID));
+
+            // Traitement de chaque chunk
+            const chunkBuffer = await streamToBuffer(chunkStream);
             const decryptedData = this.decryptChunk(chunkBuffer); // Déchiffement
-    
+
             // Écriture du chunk déchiffré dans la réponse
-            console.log('iter = > ', i);
-            i++;
-          
-            res.write(Buffer.from(decryptedData.toString(), 'base64'));
-            //res.write(Buffer.from(decryptedData)); // Écrire le buffer directement
+            res.write(Buffer.from(decryptedData.toString(), 'base64')); // Utilisation de 'base64'
         }
-    }
-    res.end(); // Terminer la réponse après tous les chunks
+
+        res.end(); // Terminer la réponse après tous les chunks
     } catch (error) {
         console.error('Erreur lors du streaming du fichier:', error);
         res.status(500).send('Erreur lors du streaming du fichier.');
     }
-}
-
-private decryptChunk(chunkBuffer: Uint8Array): Buffer {
-  try {
-      const encryptedData = Buffer.from(chunkBuffer).toString('utf-8'); // Convertir le buffer en chaîne
-
-      const decryptedBytes = CryptoJS.AES.decrypt(encryptedData, this.secretKey);
-      const decryptedData = decryptedBytes.toString(CryptoJS.enc.Base64); // Convertir en base64
-
-      // Retourner le Buffer déchiffré
-      return Buffer.from(decryptedData, 'base64'); // Convertir en Buffer
-  } catch (error) {
-      console.error('Erreur lors du déchiffrement du chunk:', error);
-      throw error; // Lancer l'erreur pour gestion ultérieure
   }
-}
 
+  private decryptChunk(chunkBuffer: Uint8Array): Buffer {
+    try {
+        const encryptedData = Buffer.from(chunkBuffer).toString('utf-8'); // Convertir le buffer en chaîne
 
+        const decryptedBytes = CryptoJS.AES.decrypt(encryptedData, this.secretKey);
+        const decryptedData = decryptedBytes.toString(CryptoJS.enc.Base64); // Convertir en base64
+
+        // Retourner le Buffer déchiffré
+        return Buffer.from(decryptedData, 'base64'); // Convertir en Buffer
+    } catch (error) {
+        console.error('Erreur lors du déchiffrement du chunk:', error);
+        throw error; // Lancer l'erreur pour gestion ultérieure
+    }
+  }
 
   private async getManifestData(manifestCID: CID): Promise<string | null> {
       const stream = this.fs.cat(manifestCID);
@@ -142,256 +101,6 @@ private decryptChunk(chunkBuffer: Uint8Array): Buffer {
       } catch (error) {
           console.error('Erreur lors du parsing du manifest JSON:', error);
           return null;
-      }
-  }
-
-  /*private async streamChunks(res: Response, chunkCIDs: string[]) {
-      try {
-          for (const chunkCID of chunkCIDs) {
-              const chunkStream = this.fs.cat(CID.parse(chunkCID));
-
-              // Déchiffrement de chaque morceau et envoi en streaming
-              for await (const chunkBuffer of chunkStream) {
-                  const decryptedData = await this.decryptChunk(chunkBuffer);
-                  if (!decryptedData) {
-                      throw new Error('Le déchiffrement a échoué ou les données sont vides.');
-                  }
-
-                  // Écrire le contenu déchiffré dans la réponse
-                  res.write(Buffer.from(decryptedData, 'base64')); // Écrire le contenu déchiffré
-              }
-          }
-          res.end(); // Terminer la réponse après tous les chunks
-      } catch (error) {
-          console.error('Erreur lors du streaming du fichier:', error);
-          res.status(500).send('Erreur lors du streaming du fichier.');
-      }
-  }*/
-
-  private async decryptChunk2(chunkBuffer: Uint8Array): Promise<string | null> {
-      try {
-          // Déchiffement
-          const encryptedData = Buffer.from(chunkBuffer.toString()); // Convertir le buffer en chaîne
-          const decryptedBytes = CryptoJS.AES.decrypt(encryptedData.toString(), this.secretKey);
-          return decryptedBytes.toString(CryptoJS.enc.Utf8); // Convertir en texte
-      } catch (error) {
-          console.error('Erreur lors du déchiffrement du chunk:', error);
-          return null;
-      }
-  }
-
-  async getMusicStream10(res: Response, cidStr: string) {
-    const manifestCID = CID.parse(cidStr);
-    const stream = this.fs.cat(manifestCID);
-
-    // Récupérer tout le contenu du stream pour le manifest
-    const chunks: Uint8Array[] = [];
-    for await (const chunk of stream) {
-        chunks.push(chunk);
-    }
-    
-    // Convertir le buffer en chaîne UTF-8
-    const manifestData = Buffer.concat(chunks).toString('utf-8'); 
-    console.log('Manifest Data:', manifestData); // Vérifiez le contenu ici
-
-    let chunkCIDs: string[];
-
-    try {
-        // Parse le contenu en JSON
-        chunkCIDs = JSON.parse(manifestData);
-    } catch (error) {
-        console.error('Erreur lors du parsing du manifest JSON:', error);
-        res.status(500).send('Erreur lors de la récupération du fichier.');
-        return; // Arrêtez l'exécution si le parsing échoue
-    }
-
-    res.setHeader('Content-Type', 'audio/mpeg');
-    res.setHeader('Accept-Ranges', 'bytes');
-
-    // Pour chaque CID de chunk, lisez et déchiffrez le contenu
-    try {
-        for (const chunkCID of chunkCIDs) {
-            const chunkStream = this.fs.cat(CID.parse(chunkCID));
-
-            for await (const chunk of chunkStream) {
-              const encryptedChunk = chunk.toString('utf-8'); // Convertir en chaîne
-            
-              // Déchiffrement de chaque morceau
-              const decryptedBytes = CryptoJS.AES.decrypt(encryptedChunk, this.secretKey);
-              const decryptedData = decryptedBytes.toString(CryptoJS.enc.Utf8); // Convertir en texte
-
-              // Vérifier si le déchiffrement a réussi
-              if (!decryptedData) {
-                  throw new Error('Le déchiffrement a échoué ou les données sont vides.');
-              }
-
-              // Écrire le contenu déchiffré dans la réponse
-                res.write(Buffer.from(decryptedData, 'base64'));
-            }
-            
-        }
-        res.end(); // Terminer la réponse
-    } catch (error) {
-        console.error('Erreur lors du streaming du fichier:', error);
-        res.status(500).send('Erreur lors du streaming du fichier.');
-    }
-}
-
-  async getMusicStream2(res: Response, cidStr: string) {
-    const cid = CID.parse(cidStr);
-    const stream = this.fs.cat(cid);
-
-    res.setHeader('Content-Type', 'audio/mpeg'); // Définir le type MIME correct
-    res.setHeader('Accept-Ranges', 'bytes'); // Indiquer que le serveur supporte les requêtes de plage
-
-    try {
-        // Streaming des données
-        for await (const chunk of stream) {
-            // Déchiffrement du chunk
-            //const encryptedData = chunk.toString('utf-8'); // Convertir le chunk en chaîne
-            //console.log('encryptedData => ', encryptedData);
-
-            const decryptedBytes = CryptoJS.AES.decrypt(Buffer.from(chunk, 'base64').toString(), this.secretKey);
-
-            console.log('decryptedBytes => ', Buffer.from(decryptedBytes.toString(CryptoJS.enc.Utf8)));
-
-            //const decryptedData = decryptedBytes.toString(CryptoJS.enc.Utf8); // Convertir en texte
-
-            // Vérifier si le déchiffrement a réussi
-            /*if (!decryptedData) {
-                throw new Error('Le déchiffrement a échoué ou les données sont vides.');
-            }*/
-
-            // Écrire le contenu déchiffré dans la réponse
-            res.write(Buffer.from(decryptedBytes.toString(CryptoJS.enc.Utf8), 'base64')); // Écrire le contenu déchiffré
-        }
-        res.end(); // Terminer la réponse
-    } catch (error) {
-        console.error('Erreur lors du streaming du fichier:', error);
-        res.status(500).send('Erreur lors du streaming du fichier.');
-    }
-}
-
-  async getMusicStreamWork(res: Response, cidStr: string) {
-    const cid = CID.parse(cidStr);
-    const stream = this.fs.cat(cid);
-
-    res.setHeader('Content-Type', 'audio/mpeg');
-    res.setHeader('Accept-Ranges', 'bytes');
-
-    try {
-        const chunks: Uint8Array[] = [];
-        for await (const chunk of stream) {
-            console.log(chunk);
-            chunks.push(chunk);
-        }
-
-        const encryptedBuffer = Buffer.concat(chunks);
-        const encryptedData = encryptedBuffer.toString('utf-8'); // Convertir le buffer en chaîne
-
-        // Déchiffrement
-        const decryptedBytes = CryptoJS.AES.decrypt(encryptedData, this.secretKey);
-        const decryptedData = decryptedBytes.toString(CryptoJS.enc.Utf8); // Convertir en texte
-
-        // Vérifier si le déchiffrement a réussi
-        if (!decryptedData) {
-            throw new Error('Le déchiffrement a échoué ou les données sont vides.');
-        }
-
-        // Écrire le contenu déchiffré dans la réponse
-        res.write(Buffer.from(decryptedData, 'base64')); // Écrire le contenu déchiffré
-        res.end();
-    } catch (error) {
-        console.error('Erreur lors du streaming du fichier:', error);
-        res.status(500).send('Erreur lors du streaming du fichier.');
-    }
-}
-
-async getMusicStream3(res: Response, cidStr: string) {
-    const cid = CID.parse(cidStr);
-    const stream = this.fs.cat(cid);
-
-    // Répondre avec un flux
-    res.setHeader('Content-Type', 'audio/mpeg'); // Définir le type MIME correct
-    res.setHeader('Accept-Ranges', 'bytes'); // Indiquer que le serveur supporte les requêtes de plage
-
-    // Obtention des métadonnées
-    let metadata: any = null;
-    let duration: number | null = null;
-
-    try {
-        // Convertir le stream en buffer pour les métadonnées
-        const buffer = await streamToBuffer(stream);
-        metadata = await parseBuffer(buffer, { mimeType: 'audio/mpeg' });
-        duration = metadata.format.duration; // Récupérer la durée
-
-        // Envoyer la durée dans les en-têtes
-        res.setHeader('X-Duration', duration ? duration.toString() : 'unknown');
-    } catch (error) {
-        console.error('Erreur lors de la récupération des métadonnées:', error);
-        res.status(500).send('Erreur lors de la récupération des métadonnées.');
-        return; // Arrête l'exécution si les métadonnées échouent
-    }
-
-    // Récupérer le flux pour le streaming
-    const newStream = this.fs.cat(cid);
-
-    // Streaming des données
-    try {
-        for await (const chunk of newStream) {
-            // Déchiffrement du chunk
-            const encryptedData = chunk.toString('utf-8'); // Convertir le chunk en chaîne
-            //console.log('encryptedData => ', encryptedData);
-
-            const decryptedBytes = CryptoJS.AES.decrypt(encryptedData, this.secretKey);
-            const decryptedData = decryptedBytes.toString(CryptoJS.enc.Utf8); // Convertit en texte UTF-8
-
-            // Vérifier si le déchiffrement a réussi
-            if (!decryptedData) {
-                throw new Error('Le déchiffrement a échoué ou les données sont vides.');
-            }
-
-            // Écrire le chunk déchiffré dans la réponse
-            res.write(Buffer.from(decryptedData, 'base64')); // Écrire le contenu déchiffré en tant que buffer
-        }
-        res.end(); // Terminer la réponse
-    } catch (error) {
-        console.error('Erreur lors du streaming du fichier:', error);
-        res.status(500).send('Erreur lors du streaming du fichier.');
-    }
-}
-
-
-  async getMusicStreamWC(res: Response, cidStr: string) {
-      const cid = CID.parse(cidStr);
-      const stream = this.fs.cat(cid);
-
-      // Répondre avec un flux
-      res.setHeader('Content-Type', 'audio/mpeg'); // Définir le type MIME correct
-      res.setHeader('Accept-Ranges', 'bytes'); // Indiquer que le serveur supporte les requêtes de plage
-      
-      // Obtention des métadonnées
-      let metadata: any = null;
-      let duration: number | null = null;
-
-      try {
-          const buffer = await streamToBuffer(stream); // Convertir le stream en buffer pour les métadonnées
-          metadata = await parseBuffer(buffer, { mimeType: 'audio/mpeg' });
-          duration = metadata.format.duration; // Récupérer la durée
-
-          // Envoyer la durée dans les en-têtes
-          res.setHeader('X-Duration', duration ? duration.toString() : 'unknown');
-          
-          // Récupérer à nouveau le flux pour l'envoyer
-          const newStream = this.fs.cat(cid);
-          
-          for await (const chunk of newStream) {
-              res.write(chunk); // Écrire chaque chunk dans la réponse
-          }
-          res.end(); // Terminer la réponse
-      } catch (error) {
-          console.error('Erreur lors de la récupération du fichier:', error);
-          res.status(500).send('Erreur lors de la récupération du fichier.');
       }
   }
 }
