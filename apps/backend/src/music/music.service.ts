@@ -30,12 +30,15 @@ export class MusicService {
     return cid.toString();
   }
 
-  async getMusicStream(cidStr: string, encryptionKey: string): Promise<Readable | null> {
+  async getMusicStream(
+    cidStr: string,
+    encryptionKey: string
+  ): Promise<{ stream: Readable | null; metadata: { title: string; duration: number } | null }> {
     const manifestCID = CID.parse(cidStr);
     const manifestData = await this.getManifestData(manifestCID);
 
     if (!manifestData) {
-        return null; // Arrêtez l'exécution si le manifest échoue
+        return { stream: null, metadata: null }; // Arrêtez l'exécution si le manifest échoue
     }
 
     let metadata: { title: string; duration: number; chunks: string[] };
@@ -44,31 +47,34 @@ export class MusicService {
         metadata = JSON.parse(manifestData);
     } catch (error) {
         console.error('Erreur lors du parsing des métadonnées du manifest:', error);
-        return null; // Arrêtez l'exécution si le parsing échoue
+        return { stream: null, metadata: null }; // Arrêtez l'exécution si le parsing échoue
     }
 
+    const { title, duration } = metadata; // Extraire uniquement title et duration pour les métadonnées finales
     const chunkCIDs = metadata.chunks;
 
     // Créer un tableau de Promesses pour chaque chunk
     const chunkPromises = chunkCIDs.map(async (chunkCID, index) => {
-      const chunkStream = this.fs.cat(CID.parse(chunkCID));
-      const chunkBuffer = await streamToBuffer(chunkStream);
-      const decryptedData = this.decryptChunk(chunkBuffer, encryptionKey); // Déchiffement
+        const chunkStream = this.fs.cat(CID.parse(chunkCID));
+        const chunkBuffer = await streamToBuffer(chunkStream);
+        const decryptedData = this.decryptChunk(chunkBuffer, encryptionKey); // Déchiffrement
 
-      if (index === 0) {
-        if (!this.isValidAudio(Buffer.from(decryptedData))) {
-            throw new Error('Le fichier audio est invalide.'); // Renvoie une erreur si le fichier n'est pas valide
+        if (index === 0) {
+            if (!this.isValidAudio(Buffer.from(decryptedData))) {
+                throw new Error('Le fichier audio est invalide.'); // Renvoie une erreur si le fichier n'est pas valide
+            }
         }
-      }
 
-      return Buffer.from(Buffer.from(decryptedData.toString(), 'base64')); // Retourner le chunk déchiffré sous forme de Buffer
-  });
+        return Buffer.from(Buffer.from(decryptedData.toString(), 'base64')); // Retourner le chunk déchiffré sous forme de Buffer
+    });
 
-  // Utiliser Readable.from() pour créer un Readable stream à partir des Promesses
-  const stream = Readable.from(chunkPromises);
+    // Utiliser Readable.from() pour créer un Readable stream à partir des Promesses
+    const stream = Readable.from(chunkPromises);
 
-  return stream;
+    // Retourner le flux et les métadonnées sans les chunks
+    return { stream, metadata: { title, duration } };
 }
+
 
 // Fonction pour vérifier si le buffer audio est valide
 private isValidAudio(buffer: Buffer): boolean {

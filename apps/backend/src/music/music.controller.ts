@@ -56,17 +56,45 @@ export class MusicController {
   }
 
   @Get('stream/:cid')
-  async streamMusic(@Param('cid') cid: string, @Res() res: Response, @Headers('X-Encryption-Key') encryptionKey: string) {
-      const stream = await this.musicService.getMusicStream(cid, encryptionKey);
+async streamMusic(
+    @Param('cid') cid: string,
+    @Res() res: Response,
+    @Headers('X-Encryption-Key') encryptionKey: string
+) {
+    const result = await this.musicService.getMusicStream(cid, encryptionKey);
 
-      if (!stream) {
-          res.status(500).send('Erreur lors de la récupération du fichier.');
-          return;
-      }
-      
-      res.setHeader('Content-Type', 'audio/mpeg');
-      stream.pipe(res);
-  }
+    if (!result || !result.stream || !result.metadata) {
+        res.status(500).send('Erreur lors de la récupération du fichier.');
+        return;
+    }
+
+    const { stream, metadata } = result;
+
+    // Définir les en-têtes pour les métadonnées
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('X-Title', metadata.title);
+    res.setHeader('X-Duration', metadata.duration.toString());
+
+    // Écrire les en-têtes puis transmettre le flux manuellement
+    res.writeHead(200);
+    
+    // Lire le flux en chunks et les transmettre manuellement
+    stream.on('data', (chunk: any) => {
+        res.write(chunk);
+    });
+
+    // Gérer la fin du flux
+    stream.on('end', () => {
+        res.end();
+    });
+
+    // Gérer les erreurs
+    stream.on('error', (err: any) => {
+        console.error('Erreur lors de la diffusion du flux audio:', err);
+        res.status(500).send('Erreur lors de la diffusion du fichier audio.');
+    });
+}
+
 
   @Get('test')
   @Header('Content-Type', 'audio/mpeg')
