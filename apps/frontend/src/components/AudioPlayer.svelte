@@ -16,7 +16,7 @@
         const result = await fetchMusic(cid, encryptionKey, audioElement);
 
         console.log('result => ', result);
-        
+
         if (result.mediaSource) {
             ({ status, duration, title } = result); // Mise à jour des informations audio
             isAudioReady = true; // Active l'affichage des informations audio
@@ -40,8 +40,6 @@
 </script>
 
 <div class="p-4 bg-white rounded-lg shadow-md">
-    <h2 class="text-2xl font-bold text-blue-600 mb-4">Lecteur Audio</h2>
-    
     <!-- Statut de chargement ou erreur -->
     <p class="text-sm text-gray-600 mb-4">{status}</p>
 
