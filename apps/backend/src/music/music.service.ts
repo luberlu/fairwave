@@ -30,18 +30,12 @@ export class MusicService {
     return cid.toString();
   }
 
-  async getMusicStream(res: Response, cidStr: string, encryptionKey: string): Promise<void> {
+  async getMusicStream(cidStr: string, encryptionKey: string): Promise<Readable | null> {
     const manifestCID = CID.parse(cidStr);
     const manifestData = await this.getManifestData(manifestCID);
 
     if (!manifestData) {
-        res.status(500).send('Erreur lors de la récupération du fichier.');
-        return; // Arrêtez l'exécution si le manifest échoue
-    }
-
-    if (!encryptionKey) {
-        res.status(400).send('Erreur : clé de cryptage manquante.');
-        return;
+        return null; // Arrêtez l'exécution si le manifest échoue
     }
 
     let metadata: { title: string; duration: number; chunks: string[] };
@@ -50,55 +44,40 @@ export class MusicService {
         metadata = JSON.parse(manifestData);
     } catch (error) {
         console.error('Erreur lors du parsing des métadonnées du manifest:', error);
-        res.status(500).send('Erreur lors du parsing des métadonnées.');
-        return;
+        return null; // Arrêtez l'exécution si le parsing échoue
     }
-
-    const chunkCIDs = metadata.chunks;
-
-    if (!chunkCIDs) {
-        res.status(500).send('Erreur lors de la récupération des chunks.');
-        return; // Arrêtez l'exécution si les chunks échouent
-    }
-
-    res.setHeader('Content-Type', 'audio/mpeg');
-    res.setHeader('X-Title', metadata.title || 'Unknown Title');
-    res.setHeader('X-Duration', metadata.duration ? metadata.duration.toString() : 'unknown');
 
     let that = this;
+    const chunkCIDs = metadata.chunks;
+    let isFirstChunk = true;
 
-    const stream = new Readable({
-        async read() {
-            let isFirstChunk = true; // Indicateur pour le premier chunk
+    // Créer un tableau de Promesses pour chaque chunk
+    const chunkPromises = chunkCIDs.map(async (chunkCID, index) => {
+      const chunkStream = this.fs.cat(CID.parse(chunkCID));
+      const chunkBuffer = await streamToBuffer(chunkStream);
+      const decryptedData = this.decryptChunk(chunkBuffer, encryptionKey); // Déchiffement
 
-            for (const chunkCID of chunkCIDs) {
-                const chunkStream = that.fs.cat(CID.parse(chunkCID));
-                const chunkBuffer = await streamToBuffer(chunkStream);
-                const decryptedData = that.decryptChunk(chunkBuffer, encryptionKey);
-
-                if (isFirstChunk) {
-                    if (!that.isValidAudio(Buffer.from(decryptedData))) {
-                        res.status(400).send('Le fichier audio est invalide.');
-                        return;
-                    }
-                    isFirstChunk = false; // Passer à false après la première vérification
-                }
-
-                stream.push(Buffer.from(decryptedData)); // Pousse le chunk déchiffré dans le stream
-            }
-            this.push(null); // Indique que le stream est terminé
+      if (index === 0) {
+        if (!this.isValidAudio(Buffer.from(decryptedData))) {
+            throw new Error('Le fichier audio est invalide.'); // Renvoie une erreur si le fichier n'est pas valide
         }
-    });
+      }
 
-    // Pipe le stream à la réponse
-    stream.pipe(res);
+      return Buffer.from(Buffer.from(decryptedData.toString(), 'base64')); // Retourner le chunk déchiffré sous forme de Buffer
+  });
+
+  // Utiliser Readable.from() pour créer un Readable stream à partir des Promesses
+  const stream = Readable.from(chunkPromises);
+
+  return stream;
 }
 
 // Fonction pour vérifier si le buffer audio est valide
 private isValidAudio(buffer: Buffer): boolean {
   // Vérifier si le buffer commence correctement
   const id3Header = buffer.toString('utf-8', 0, 3); // Lire les premiers octets
-  return id3Header === '//v'; 
+  console.log(id3Header);
+  return (id3Header === '//v' || id3Header === 'SUQ'); 
 }
 
 // Modifiez également la fonction de déchiffrement pour accepter la clé

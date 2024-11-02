@@ -1,9 +1,11 @@
-import { Controller, Post, Get, Body, Param, UseInterceptors, UploadedFile, Res, Headers } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, UseInterceptors, UploadedFile, Res, Headers, StreamableFile, Header } from '@nestjs/common';
 import { MusicService } from './music.service.js';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { parseBuffer } from 'music-metadata';
 import CryptoJS from 'crypto-js';
+import { createReadStream } from 'fs';
+import { join } from 'path';
 
 @Controller('music')
 export class MusicController {
@@ -55,8 +57,25 @@ export class MusicController {
 
   @Get('stream/:cid')
   async streamMusic(@Param('cid') cid: string, @Res() res: Response, @Headers('X-Encryption-Key') encryptionKey: string) {
-      // Assurez-vous que la clé de cryptage est utilisée pour le déchiffrement dans votre logique
-      await this.musicService.getMusicStream(res, cid, encryptionKey); // Modifiez la signature de la méthode getMusicStream pour accepter la clé
+      const stream = await this.musicService.getMusicStream(cid, encryptionKey);
+
+      if (!stream) {
+          res.status(500).send('Erreur lors de la récupération du fichier.');
+          return;
+      }
+
+      console.log('jenvoie le stream...');
+      console.log('stream => ', stream);
+    
+      res.setHeader('Content-Type', 'audio/mpeg');
+      stream.pipe(res);
+  }
+
+  @Get('test')
+  @Header('Content-Type', 'audio/mpeg')
+  getFile(): StreamableFile {
+    const file = createReadStream(join(process.cwd(), 'music.mp3'));
+    return new StreamableFile(file);
   }
 
 }
