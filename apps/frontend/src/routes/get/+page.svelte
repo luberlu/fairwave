@@ -1,94 +1,85 @@
 <script lang="ts">
-    import { onDestroy } from 'svelte';
+    import AudioPlayer from '../../components/AudioPlayer.svelte';
 
-    let cid = '';
-    let audioElement: HTMLAudioElement | null = null;
-    let status = '';
-    let duration: number | null = null;
-    let title: string | null = null;
+    let cid = ''; // CID pour récupérer l'audio
     let encryptionKey = ''; // Clé de cryptage
-    let sourceBuffer: SourceBuffer | null = null; // Référence au SourceBuffer
-    let mediaSource: MediaSource | null = null; // Référence au MediaSource
-    let isAppending = false; // Indicateur pour savoir si nous sommes en train d'ajouter des données
+    let fetchStatus = '';
+    let isAudioLoaded = false; // Variable pour contrôler l'affichage du lecteur
 
-    async function fetchMusic() {
+    async function handleFetch() {
         if (!cid || !encryptionKey) {
-            status = "Veuillez entrer un CID et une clé de cryptage.";
+            fetchStatus = "Veuillez entrer un CID et une clé de cryptage.";
             return;
         }
 
-        try {
-            const response = await fetch(`/api/music/stream/${cid}`, {
-                method: 'GET',
-                headers: {
-                    'X-Encryption-Key': encryptionKey // Inclure la clé dans l'en-tête
-                }
-            });
+        fetchStatus = "Chargement de l'audio...";
+        isAudioLoaded = false;
 
-            if (!response.ok) throw new Error(await response.text()); // Récupérer le message d'erreur
-
-            duration = parseFloat(response.headers.get('X-Duration') || '0');
-            title = response.headers.get('X-Title'); // Récupérer le titre
-
-            mediaSource = new MediaSource();
-            audioElement.src = URL.createObjectURL(mediaSource);
-
-            mediaSource.addEventListener('sourceopen', async () => {
-                sourceBuffer = mediaSource.addSourceBuffer('audio/mpeg');
-
-                const reader = response.body.getReader();
-
-                // Lire les données audio à partir de la réponse en streaming
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-
-                    // Attendre si nous sommes déjà en train d'ajouter des données
-                    while (isAppending) {
-                        await new Promise(resolve => setTimeout(resolve, 100)); // Attendre un peu avant de réessayer
-                    }
-
-                    isAppending = true; // Indiquer que nous commençons l'opération d'ajout
-                    sourceBuffer.appendBuffer(value);
-                    sourceBuffer.addEventListener('updateend', () => {
-                        isAppending = false; // Réinitialiser l'indicateur après l'ajout
-                    });
-                }
-            });
-
-            status = "Fichier récupéré avec succès !";
-        } catch (error) {
-            console.error('Erreur lors de la récupération du fichier:', error);
-            status = `Erreur lors de la récupération du fichier : ${error.message}`;
-        }
+        // Simuler le chargement de l'audio avec un délai
+        setTimeout(() => {
+            fetchStatus = ''; // Réinitialise le statut de chargement
+            isAudioLoaded = true; // Active l'affichage du lecteur après le chargement
+        }, 1000);
     }
-
-    // Nettoyage de l'URL blob (si utilisé)
-    onDestroy(() => {
-        if (audioElement) {
-            URL.revokeObjectURL(audioElement.src);
-        }
-    });
 </script>
 
-<h1>Récupérer un morceau</h1>
-<input type="text" placeholder="CID" bind:value={cid} />
-<input type="text" placeholder="Clé de cryptage" bind:value={encryptionKey} />
-<button on:click={fetchMusic}>Récupérer</button>
+<div class="container mx-auto p-6 grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+    <!-- Section de Description -->
+    <div class="text-left p-4">
+        <h1 class="text-3xl font-bold mb-6 text-blue-600">Lecture Audio</h1>
+        
+        <p class="text-gray-700 mb-4">
+            Bienvenue sur la page de lecture audio. Ici, vous pouvez accéder à votre fichier audio MP3 précédemment uploadé en fournissant le CID (Content Identifier) et la clé de cryptage.
+        </p>
 
-<p>{status}</p>
+        <p class="text-gray-700 mb-4">
+            Cette clé est utilisée pour déchiffrer et jouer l'audio directement dans votre navigateur. Assurez-vous d'entrer les informations correctes pour accéder au fichier en toute sécurité.
+        </p>
 
-<!-- Affiche toujours le lecteur audio -->
-<div>
-    <h2>Lecteur Audio :</h2>
-    {#if title}
-        <h3>Titre : {title}</h3>
-    {/if}
-    <audio bind:this={audioElement} controls>
-        <track kind="captions" />
-    </audio>
-    <p>Streaming à partir de CID : {cid}</p>
-    {#if duration}
-        <p>Durée : {Math.floor(duration / 60)}:{(duration % 60).toFixed(0).padStart(2, '0')}</p>
-    {/if}
+        <p class="text-sm text-gray-500 mt-4">
+            Note : Si vous n'avez pas la clé de cryptage ou le CID, il ne sera pas possible de lire le fichier. Veillez à conserver ces informations en lieu sûr.
+        </p>
+    </div>
+
+    <!-- Formulaire de récupération -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-bold mb-6 text-center text-blue-600">Charger un fichier audio</h2>
+
+        <div class="mb-4">
+            <input 
+                type="text" 
+                placeholder="CID" 
+                bind:value={cid} 
+                class="border p-3 rounded-md w-full mb-4" 
+            />
+            <input 
+                type="text" 
+                placeholder="Clé de cryptage" 
+                bind:value={encryptionKey} 
+                class="border p-3 rounded-md w-full mb-4" 
+            />
+            <button 
+                on:click={handleFetch} 
+                class="bg-blue-500 text-white p-3 rounded-md w-full font-semibold transition-all duration-300 ease-in-out hover:bg-blue-600 flex items-center justify-center"
+            >
+                {#if fetchStatus === "Chargement de l'audio..."}
+                    <svg class="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                    </svg>
+                    Chargement...
+                {:else}
+                    Charger l'audio
+                {/if}
+            </button>
+            <p class="mt-4 text-sm text-gray-600">{fetchStatus}</p>
+        </div>
+
+        <!-- Affichage conditionnel du lecteur audio -->
+        {#if isAudioLoaded}
+            <AudioPlayer {cid} {encryptionKey} />
+        {:else if !fetchStatus}
+            <p class="text-sm text-gray-500">Veuillez entrer un CID et une clé de cryptage pour démarrer la lecture.</p>
+        {/if}
+    </div>
 </div>
