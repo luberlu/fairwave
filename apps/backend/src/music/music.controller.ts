@@ -63,10 +63,7 @@ export class MusicController {
           res.status(500).send('Erreur lors de la récupération du fichier.');
           return;
       }
-
-      console.log('jenvoie le stream...');
-      console.log('stream => ', stream);
-    
+      
       res.setHeader('Content-Type', 'audio/mpeg');
       stream.pipe(res);
   }

@@ -47,9 +47,7 @@ export class MusicService {
         return null; // Arrêtez l'exécution si le parsing échoue
     }
 
-    let that = this;
     const chunkCIDs = metadata.chunks;
-    let isFirstChunk = true;
 
     // Créer un tableau de Promesses pour chaque chunk
     const chunkPromises = chunkCIDs.map(async (chunkCID, index) => {
@@ -76,7 +74,6 @@ export class MusicService {
 private isValidAudio(buffer: Buffer): boolean {
   // Vérifier si le buffer commence correctement
   const id3Header = buffer.toString('utf-8', 0, 3); // Lire les premiers octets
-  console.log(id3Header);
   return (id3Header === '//v' || id3Header === 'SUQ'); 
 }
 
