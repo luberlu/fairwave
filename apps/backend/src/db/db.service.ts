@@ -1,5 +1,6 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import Gun from 'gun';
+import * as http from 'http';
 
 // Interface pour le profil utilisateur
 interface UserProfile {
@@ -19,8 +20,15 @@ export class DbService implements OnModuleInit {
 
     onModuleInit() {
         // Initialisation de Gun
-        this.gun = Gun({ web: { port: 8765 } });
-        console.log('GunDB initialisé');
+        const server = http.createServer();
+        
+        // Initialiser Gun avec le serveur HTTP
+        this.gun = Gun({ web: server });
+
+        // Écouter sur le port 8765
+        server.listen(8765, () => {
+            console.log('Gun server démarré sur http://localhost:8765/gun');
+        });
     }
 
      // Méthode pour exposer Gun aux autres services
