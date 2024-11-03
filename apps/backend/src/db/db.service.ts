@@ -1,6 +1,8 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import Gun from 'gun';
 import * as http from 'http';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 
 // Interface pour le profil utilisateur
 interface UserProfile {
@@ -21,9 +23,15 @@ export class DbService implements OnModuleInit {
     onModuleInit() {
         // Initialisation de Gun
         const server = http.createServer();
+
+        const __filename = fileURLToPath(import.meta.url);
+        const __dirname = dirname(__filename);
         
         // Initialiser Gun avec le serveur HTTP
-        this.gun = Gun({ web: server });
+        this.gun = Gun({
+            web: server,
+            file: join(__dirname, '..', '..', '..', '..', 'storage', 'tmp'), // Dossier pour les fichiers temporaires
+        });
 
         // Écouter sur le port 8765
         server.listen(8765, () => {
