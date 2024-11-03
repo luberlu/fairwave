@@ -2,13 +2,12 @@
     import AudioPlayer from '../../components/AudioPlayer.svelte';
 
     let cid = ''; // CID pour récupérer l'audio
-    let encryptionKey = ''; // Clé de cryptage
     let fetchStatus = '';
     let isAudioLoaded = false; // Variable pour contrôler l'affichage du lecteur
 
     async function handleFetch() {
-        if (!cid || !encryptionKey) {
-            fetchStatus = "Veuillez entrer un CID et une clé de cryptage.";
+        if (!cid) {
+            fetchStatus = "Veuillez entrer un CID.";
             return;
         }
 
@@ -52,12 +51,6 @@
                 bind:value={cid} 
                 class="border p-3 rounded-md w-full mb-4" 
             />
-            <input 
-                type="text" 
-                placeholder="Clé de cryptage" 
-                bind:value={encryptionKey} 
-                class="border p-3 rounded-md w-full mb-4" 
-            />
             <button 
                 on:click={handleFetch} 
                 class="bg-blue-500 text-white p-3 rounded-md w-full font-semibold transition-all duration-300 ease-in-out hover:bg-blue-600 flex items-center justify-center"
@@ -77,7 +70,7 @@
 
         <!-- Affichage conditionnel du lecteur audio -->
         {#if isAudioLoaded}
-            <AudioPlayer {cid} {encryptionKey} />
+            <AudioPlayer {cid} />
         {:else if !fetchStatus}
             <p class="text-sm text-gray-500">Veuillez entrer un CID et une clé de cryptage pour démarrer la lecture.</p>
         {/if}

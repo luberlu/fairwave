@@ -6,12 +6,11 @@
 
     let title = '';
     let file: File | null = null;
-    let secretKey = ''; // Clé de cryptage
     let uploadStatus = '';
     let isUploading = false;
 
     async function handleUpload() {
-        if (!title || !file || !secretKey) {
+        if (!title || !file) {
             uploadStatus = "Veuillez remplir tous les champs.";
             return;
         }
@@ -19,7 +18,7 @@
         isUploading = true; // Activer le chargement
         uploadStatus = ''; // Réinitialiser le statut
 
-        const result = await uploadMusic(title, file, secretKey);
+        const result = await uploadMusic(title, file);
         uploadStatus = result.success ? `Téléchargement réussi ! CID : ${result.cid}` : 'Erreur lors du téléchargement';
         
         isUploading = false; // Désactiver le chargement après le téléchargement
@@ -31,9 +30,6 @@
 
     <!-- Section Informations du fichier -->
     <FileInfo bind:title bind:file />
-
-    <!-- Section Cryptage -->
-    <EncryptionKey bind:secretKey />
 
     <!-- Section Bouton Télécharger et statut -->
     <div class="text-center">

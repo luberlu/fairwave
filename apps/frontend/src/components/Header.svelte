@@ -1,38 +1,55 @@
-<!-- Header.svelte -->
 <script lang="ts">
 	import {
 		address,
 		status,
 		isAuthenticated,
 		authenticate,
-		checkAuthentication
+		checkAuthentication,
+		encryptionKey,
+		initializeEncryptionKey,
 	} from '../lib/authStore';
 	import UserInfos from './UserInfos.svelte';
 	import { onMount } from 'svelte';
 
 	let showStatus = false;
+	let showPassphraseInput = false;
+	let passphrase = '';
 
-	// Vérifier l'authentification lors du chargement du composant
 	onMount(() => {
 		checkAuthentication();
 	});
 
-	// Déconnecter l'utilisateur
+	// Bloc réactif pour afficher le champ de passphrase lorsque l'utilisateur est authentifié mais sans clé de chiffrement
+	$: showPassphraseInput = $isAuthenticated && !$encryptionKey;
+
 	function logout() {
 		address.set('');
 		isAuthenticated.set(false);
+		encryptionKey.set(null);
 		localStorage.removeItem('userAddress');
+		localStorage.removeItem('encryptionKey');
 		status.set('Déconnecté avec succès.');
 		showStatusMessage();
 	}
 
-	// Afficher le message temporairement
 	function showStatusMessage() {
 		showStatus = true;
 		setTimeout(() => {
 			showStatus = false;
 			status.set('');
-		}, 3000); // Message disparaît après 3 secondes
+		}, 3000);
+	}
+
+	async function setEncryptionKey() {
+		if (passphrase) {
+			await initializeEncryptionKey(passphrase);
+			showPassphraseInput = false;
+			status.set("Clé de chiffrement générée avec succès !");
+			showStatusMessage();
+		} else {
+			status.set("Veuillez entrer une passphrase valide.");
+			showStatusMessage();
+		}
 	}
 </script>
 
@@ -44,6 +61,7 @@
 				<a href="/" class="hover:underline">Accueil</a>
 				<a href="/upload" class="hover:underline">Upload</a>
 				<a href="/get" class="hover:underline">Play</a>
+				<a href="/list" class="hover:underline">List</a>
 			</nav>
 			{#if $isAuthenticated}
 				<UserInfos {address} />
@@ -57,6 +75,22 @@
 			{/if}
 		</div>
 	</div>
+
+	{#if showPassphraseInput}
+		<div class="mt-4 p-4 bg-blue-600 text-white rounded-md">
+			<p class="mb-2">Veuillez entrer une passphrase pour sécuriser votre compte :</p>
+			<input
+				type="text"
+				bind:value={passphrase}
+				class="rounded-md p-2 text-black"
+				placeholder="Votre passphrase"
+			/>
+			<button on:click={setEncryptionKey} class="ml-2 rounded-md bg-green-500 p-2 text-white">
+				Valider
+			</button>
+		</div>
+	{/if}
+
 	{#if showStatus && $status}
 		<div class="mt-2 rounded-md bg-blue-500 p-2 text-center text-white">
 			{$status}

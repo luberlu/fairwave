@@ -24,6 +24,7 @@ export class MusicService {
       [
         'function registerTrack(string cid) public',
         'function isOwner(address user, string cid) public view returns (bool)',
+        'function getTracksByOwner(address owner) public view returns (string[])'
       ],
       this.provider,
     );
@@ -58,6 +59,16 @@ export class MusicService {
       return false; // En cas d'erreur, on considère que le morceau n'est pas enregistré
     }
   }
+
+  async getUserTracks(userAddress: string): Promise<string[]> {
+    try {
+        const userTracks = await this.contract.getTracksByOwner(userAddress);
+        return userTracks;
+    } catch (error) {
+        console.error('Erreur lors de la récupération des morceaux de l\'utilisateur:', error);
+        throw new Error('Impossible de récupérer les morceaux de l\'utilisateur.');
+    }
+}
 
   // Enregistre le morceau sur la blockchain
   async registerTrackOnBlockchain(userAddress: string, cid: string) {

@@ -13,7 +13,7 @@
 
 	async function playAudio() {
 		statusMessage = "Chargement de l'audio...";
-		const result = await fetchMusic(cid, encryptionKey, audioElement);
+		const result = await fetchMusic(cid, audioElement, encryptionKey);
 
 		console.log('result => ', result);
 

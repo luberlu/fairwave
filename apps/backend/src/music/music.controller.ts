@@ -116,6 +116,27 @@ export class MusicController {
     });
   }
 
+  @Get('user-tracks')
+  async getUserTracks(@Headers('X-User-Address') userAddress: string) {
+    if (!userAddress) {
+      throw new HttpException(
+        'Adresse de l’utilisateur manquante',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    try {
+      const tracks = await this.musicService.getUserTracks(userAddress);
+      return { success: true, tracks };
+    } catch (error) {
+      console.error('Erreur lors de la récupération des morceaux:', error);
+      throw new HttpException(
+        'Erreur lors de la récupération des morceaux',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
   @Get('test')
   @Header('Content-Type', 'audio/mpeg')
   getFile(): StreamableFile {
