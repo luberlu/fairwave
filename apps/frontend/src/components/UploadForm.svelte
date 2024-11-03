@@ -1,8 +1,7 @@
 <script lang="ts">
     import { uploadMusic } from '../lib/uploadMusic';
     import FileInfo from '../components/FileInfo.svelte';
-    import EncryptionKey from '../components/EncryptionKey.svelte';
-    import { Icon, ArrowDownTray, ArrowPath } from 'svelte-hero-icons';
+    import { Icon, ArrowPath } from 'svelte-hero-icons';
 
     let title = '';
     let file: File | null = null;

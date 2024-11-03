@@ -2,7 +2,7 @@
     import { onMount } from 'svelte';
     import { fetchUserTracks } from '../../lib/fetchMusic';
     import AudioPlayer from '../../components/AudioPlayer.svelte';
-	import { requestEncryptionKey } from '$lib/uploadMusic';
+	import { getEncryptionKey } from '$lib/authStore';
 
     let tracks: string[] = [];
     let statusMessage: string = 'Chargement des morceaux...';
@@ -16,7 +16,7 @@
                 statusMessage = ''; // Efface le message si des morceaux sont trouvés
 
                 // Récupère la clé de déchiffrement pour tous les morceaux
-                encryptionKey = await requestEncryptionKey();
+                encryptionKey = getEncryptionKey();
                 if (!encryptionKey) {
                     statusMessage = "Erreur : Impossible de générer la clé de déchiffrement.";
                 }
