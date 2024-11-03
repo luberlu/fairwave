@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, HttpException } from '@nestjs/common';
+import { ethers, ContractTransaction } from 'ethers';
 import { createHelia } from 'helia';
 import { unixfs } from '@helia/unixfs';
-import { CID } from 'multiformats/cid';
 import { FsBlockstore } from 'blockstore-fs';
 import CryptoJS from 'crypto-js';
+import { CID } from 'multiformats/cid';
 import { Readable } from 'stream';
 import { parseBuffer } from 'music-metadata';
 
@@ -11,9 +12,21 @@ import { parseBuffer } from 'music-metadata';
 export class MusicService {
   private helia: any;
   private fs: any;
+  private provider: ethers.JsonRpcProvider;
+  private contract: ethers.Contract;
 
   constructor() {
     this.initHelia();
+    this.provider = new ethers.JsonRpcProvider('http://localhost:8545'); // URL Hardhat par défaut
+
+    this.contract = new ethers.Contract(
+      '0x5fbdb2315678afecb367f032d93f642f64180aa3', // Remplace par l'adresse de ton contrat déployé
+      [
+        'function registerTrack(string cid) public',
+        'function isOwner(address user, string cid) public view returns (bool)',
+      ],
+      this.provider,
+    );
   }
 
   async initHelia() {
@@ -22,11 +35,73 @@ export class MusicService {
     this.fs = unixfs(this.helia);
   }
 
-  async uploadMusic(title: string, secretKey: string, buffer: Buffer): Promise<{ manifestCID: string }> {
+  async uploadMusic(
+    title: string,
+    secretKey: string,
+    buffer: Buffer,
+  ): Promise<{ manifestCID: string }> {
     const duration = await this.getAudioDuration(buffer);
     const chunkCIDs = await this.encryptAndUploadChunks(buffer, secretKey);
     const manifestCID = await this.createManifest(title, duration, chunkCIDs);
     return { manifestCID };
+  }
+
+  async isTrackRegistered(cid: string): Promise<boolean> {
+    try {
+      const isOwner = await this.contract.isOwner(this.contract.target, cid);
+      return isOwner;
+    } catch (error) {
+      console.error(
+        "Erreur lors de la vérification de l'existence du morceau:",
+        error,
+      );
+      return false; // En cas d'erreur, on considère que le morceau n'est pas enregistré
+    }
+  }
+
+  // Enregistre le morceau sur la blockchain
+  async registerTrackOnBlockchain(userAddress: string, cid: string) {
+    console.log(
+      'register new track on blockchain: userAdress: ',
+      userAddress,
+      ' cid => ',
+      cid,
+    );
+
+    const signer = await this.provider.getSigner(userAddress); // Récupérer le Signer via l’adresse
+    const contractWithSigner = this.contract.connect(signer); // Connecter le signer au contrat
+
+    try {
+      const registerTrackFn = contractWithSigner.getFunction('registerTrack');
+      const transaction = await registerTrackFn(cid);
+      await transaction.wait();
+      return transaction.hash;
+    } catch (error) {
+      console.error(
+        "Erreur lors de l'enregistrement sur la blockchain:",
+        error,
+      );
+      throw new HttpException(
+        "Erreur lors de l'enregistrement sur la blockchain",
+        403,
+      );
+    }
+  }
+
+  async verifyOwnershipOnBlockchain(
+    cid: string,
+    userAddress: string,
+  ): Promise<boolean> {
+    try {
+      const isOwner = await this.contract.isOwner(userAddress, cid);
+      return isOwner;
+    } catch (error) {
+      console.error(
+        'Erreur lors de la vérification de la propriété sur la blockchain:',
+        error,
+      );
+      throw new Error('Erreur lors de la vérification de la propriété');
+    }
   }
 
   private async getAudioDuration(buffer: Buffer): Promise<number> {
@@ -34,13 +109,19 @@ export class MusicService {
     return metadata.format.duration ?? 0;
   }
 
-  private async encryptAndUploadChunks(buffer: Buffer, secretKey: string, chunkSize = 1024 * 1024): Promise<string[]> {
+  private async encryptAndUploadChunks(
+    buffer: Buffer,
+    secretKey: string,
+    chunkSize = 1024 * 1024,
+  ): Promise<string[]> {
     const chunkCIDs: string[] = [];
 
     for (let i = 0; i < buffer.length; i += chunkSize) {
       const chunk = buffer.subarray(i, i + chunkSize);
       const encryptedChunk = this.encryptChunk(chunk, secretKey);
-      const chunkCID = await this.uploadToIPFS(Buffer.from(encryptedChunk, 'utf-8'));
+      const chunkCID = await this.uploadToIPFS(
+        Buffer.from(encryptedChunk, 'utf-8'),
+      );
       chunkCIDs.push(chunkCID);
     }
 
@@ -52,7 +133,11 @@ export class MusicService {
     return CryptoJS.AES.encrypt(base64Chunk, secretKey).toString();
   }
 
-  private async createManifest(title: string, duration: number, chunkCIDs: string[]): Promise<string> {
+  private async createManifest(
+    title: string,
+    duration: number,
+    chunkCIDs: string[],
+  ): Promise<string> {
     const manifest = JSON.stringify({ title, duration, chunks: chunkCIDs });
     return await this.uploadToIPFS(Buffer.from(manifest, 'utf-8'));
   }
@@ -62,7 +147,13 @@ export class MusicService {
     return cid.toString();
   }
 
-  async getMusicStream(cidStr: string, encryptionKey: string): Promise<{ stream: Readable | null; metadata: { title: string; duration: number } | null }> {
+  async getMusicStream(
+    cidStr: string,
+    encryptionKey: string,
+  ): Promise<{
+    stream: Readable | null;
+    metadata: { title: string; duration: number } | null;
+  }> {
     const manifestCID = CID.parse(cidStr);
     const manifestData = await this.getManifestData(manifestCID);
 
@@ -73,7 +164,10 @@ export class MusicService {
     try {
       metadata = JSON.parse(manifestData);
     } catch (error) {
-      console.error('Erreur lors du parsing des métadonnées du manifest:', error);
+      console.error(
+        'Erreur lors du parsing des métadonnées du manifest:',
+        error,
+      );
       return { stream: null, metadata: null };
     }
 
@@ -81,19 +175,32 @@ export class MusicService {
     const chunkCIDs = metadata.chunks;
 
     const chunkPromises = chunkCIDs.map(async (chunkCID, index) => {
-      const chunkStream = this.fs.cat(CID.parse(chunkCID));
-      const chunkBuffer = await streamToBuffer(chunkStream);
-      const decryptedData = this.decryptChunk(chunkBuffer, encryptionKey);
+      try {
+        const chunkStream = this.fs.cat(CID.parse(chunkCID));
+        const chunkBuffer = await streamToBuffer(chunkStream);
+        const decryptedData = this.decryptChunk(chunkBuffer, encryptionKey);
 
-      if (index === 0 && !this.isValidAudio(Buffer.from(decryptedData))) {
-        throw new Error('Le fichier audio est invalide.');
+        if (index === 0 && !this.isValidAudio(Buffer.from(decryptedData))) {
+          throw new Error('Le fichier audio est invalide.');
+        }
+
+        return Buffer.from(decryptedData.toString(), 'base64');
+      } catch (error) {
+        console.error(
+          `Erreur lors de la récupération ou du déchiffrement du chunk ${chunkCID}:`,
+          error,
+        );
+        throw new Error('Erreur de déchiffrement ou de récupération du chunk.');
       }
-
-      return Buffer.from(decryptedData.toString(), 'base64');
     });
 
-    const stream = Readable.from(chunkPromises);
-    return { stream, metadata: { title, duration } };
+    try {
+      const stream = Readable.from(chunkPromises);
+      return { stream, metadata: { title, duration } };
+    } catch (error) {
+      console.error('Erreur lors de la création du flux audio:', error);
+      return { stream: null, metadata: null };
+    }
   }
 
   private async getManifestData(manifestCID: CID): Promise<string | null> {
@@ -124,7 +231,9 @@ export class MusicService {
 }
 
 // Fonction pour convertir un stream en buffer
-async function streamToBuffer(stream: AsyncIterable<Uint8Array>): Promise<Buffer> {
+async function streamToBuffer(
+  stream: AsyncIterable<Uint8Array>,
+): Promise<Buffer> {
   const chunks: Uint8Array[] = [];
   for await (const chunk of stream) {
     chunks.push(chunk);

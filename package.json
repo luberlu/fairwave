@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "concurrently \"pnpm run hardhat-node\" \"pnpm run deploy-contract\" \"pnpm --filter frontend run dev\" \"pnpm --filter backend run start:dev\"",
+    "start": "concurrently \"pnpm run hardhat-node\" \"pnpm run deploy-contract\" \"pnpm --filter frontend run dev\" \"pnpm --filter backend run start:dev\" --parallel --no-stream",
     "hardhat-node": "cd smart && npx hardhat node",
     "deploy-contract": "cd smart && npx hardhat run scripts/deploy.js --network localhost"
   },
