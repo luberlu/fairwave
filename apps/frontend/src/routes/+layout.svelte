@@ -1,5 +1,6 @@
 <script>
 	import '../app.css';
+	import Header from '../components/Header.svelte';
 
 	if (typeof window !== 'undefined') {
 		window.global = window;
@@ -8,16 +9,7 @@
   
   <div class="min-h-screen flex flex-col bg-gray-100 text-gray-900">
 	<!-- Header -->
-	<header class="bg-blue-700 text-white p-4 shadow-md">
-	  <div class="container mx-auto flex justify-between items-center">
-		<h1 class="text-2xl font-bold">Fairwave</h1>
-		<nav class="space-x-4">
-		  <a href="/" class="hover:underline">Accueil</a>
-		  <a href="/upload" class="hover:underline">Upload</a>
-		  <a href="/get" class="hover:underline">Play</a>
-		</nav>
-	  </div>
-	</header>
+	<Header/>
   
 	<!-- Contenu principal -->
 	<main class="container mx-auto flex-1 p-6">
