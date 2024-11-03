@@ -1,9 +1,8 @@
 import { defineConfig } from 'vitest/config';
 import { sveltekit } from '@sveltejs/kit/vite';
+import { NodeGlobalsPolyfillPlugin } from '@esbuild-plugins/node-globals-polyfill';
 
 export default defineConfig({
-    plugins: [sveltekit()],
-
     server: {
         proxy: {
             '/api': {
@@ -13,8 +12,21 @@ export default defineConfig({
             }
         }
     },
-
-    test: {
-        include: ['src/**/*.{test,spec}.{js,ts}']
-    }
+    plugins: [
+        sveltekit(),
+        NodeGlobalsPolyfillPlugin({
+            buffer: true, // Polyfill pour `Buffer`
+        }),
+    ],
+    define: {
+        global: 'window', // Redirige `global` vers `window` pour compatibilité navigateur
+    },
+    resolve: {
+        alias: {
+            buffer: 'buffer', // Spécifie l'utilisation de `buffer` comme alias
+        },
+    },
+    optimizeDeps: {
+        include: ['buffer'], // Assure l'inclusion de `buffer` dans les dépendances optimisées
+    },
 });

@@ -1,6 +1,10 @@
-<script lang="ts">
+<script>
 	import '../app.css';
-  </script>
+
+	if (typeof window !== 'undefined') {
+		window.global = window;
+	}
+</script>
   
   <div class="min-h-screen flex flex-col bg-gray-100 text-gray-900">
 	<!-- Header -->
