@@ -1,12 +1,11 @@
 // authStore.ts
 import { ethers } from 'ethers';
-import { did, status, isAuthenticated, encryptionKey } from '../user/UserStore';
+import { did, status, isAuthenticated, encryptionKey, isArtist, setUserProfile } from '../user/UserStore';
 import { getEncryptionKey } from './EncryptionKey';
 import { goto } from '$app/navigation';
+import { get } from 'svelte/store';
 
-const BACKEND_URL = 'http://localhost:3000/auth';
-
-// Authentifie l'utilisateur via MetaMask
+// Authentifie l'utilisateur via MetaMask et enregistre un profil de base si nécessaire
 export async function authenticate(): Promise<void> {
 	status.set("Authentification en cours...");
 
@@ -17,23 +16,34 @@ export async function authenticate(): Promise<void> {
 
 	try {
 		const { userAddress, signature } = await getUserAddressAndSignature();
-		const userDid = generateDid(userAddress);
-		const userProfile = await getUserProfileFromBackend(userDid);
+		const userDid = generateDid(userAddress); // Génère le DID à partir de l'adresse
+		let userProfile = await getUserProfileFromBackend(userDid);
 
+		// Enregistre un profil de base si l'utilisateur n'existe pas
 		if (!userProfile) {
-			status.set("Aucun profil utilisateur trouvé. Redirection vers la création de profil...");
-			goto('/user/create');
-			return;
+			await storeUserProfileInBackend(userDid, signature);
+			status.set("Profil utilisateur de base créé avec succès !");
+			userProfile = { did: userDid }; // Profil basique sans champ isArtist
 		} else {
 			status.set("Utilisateur authentifié avec succès !");
-			return;
 		}
 
+		console.log('userProfile => ', userProfile);
+
+		// Met à jour le store avec le DID et les informations de profil
 		did.set(userDid);
 		isAuthenticated.set(true);
+		isArtist.set(userProfile.role || false); // Définit le rôle en fonction du profil, par défaut à false
 
-		// Gère la clé de chiffrement de l'utilisateur
-		await handleEncryptionKey(userProfile);
+		console.log('userProfile.isArtist => ', userProfile.isArtist);
+
+		// Si le profil est incomplet, redirige vers la page de création de profil
+		if (userProfile.role === undefined) {
+			goto('/user/create');
+		} else {
+			setUserProfile(userProfile);
+			goto('/user/profile');
+		}
 	} catch (error) {
 		console.error("Erreur lors de l'authentification :", error);
 		status.set("Erreur lors de l'authentification.");
@@ -58,9 +68,9 @@ async function getUserAddressAndSignature() {
 }
 
 // Récupère le profil utilisateur depuis le backend en utilisant le DID
-async function getUserProfileFromBackend(userDid: string) {
+export async function getUserProfileFromBackend(userDid: string) {
 	try {
-		const response = await fetch(`${BACKEND_URL}/get-profile/${encodeURIComponent(userDid)}`);
+		const response = await fetch(`/api/auth/get-profile/${encodeURIComponent(userDid)}`);
 		const data = await response.json();
 		return data.success ? data.profile : null;
 	} catch (error) {
@@ -70,10 +80,10 @@ async function getUserProfileFromBackend(userDid: string) {
 	}
 }
 
-// Stocke un nouveau profil utilisateur dans le backend en utilisant le DID
+// Stocke un nouveau profil utilisateur dans le backend en utilisant le DID et la signature
 async function storeUserProfileInBackend(userDid: string, signature: string) {
 	try {
-		const response = await fetch(`${BACKEND_URL}/store-profile`, {
+		const response = await fetch(`/api/auth/store-profile`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ did: userDid, signature }),
@@ -86,6 +96,33 @@ async function storeUserProfileInBackend(userDid: string, signature: string) {
 		console.error("Erreur lors du stockage du profil utilisateur :", error);
 		status.set("Erreur lors du stockage du profil utilisateur.");
 	}
+}
+
+export async function updateUserProfile(updates: any) {
+	const userDid = get(did); // Récupère le DID depuis le store
+
+    if (!userDid) {
+        status.set("Erreur : DID utilisateur non disponible.");
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/auth/update-profile/${encodeURIComponent(userDid)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updates),
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            status.set("Profil utilisateur mis à jour avec succès !");
+        } else {
+            status.set(data.error || "Erreur lors de la mise à jour du profil utilisateur.");
+        }
+    } catch (error) {
+        console.error("Erreur lors de la mise à jour du profil utilisateur :", error);
+        status.set("Erreur lors de la mise à jour du profil utilisateur.");
+    }
 }
 
 // Gère la clé de chiffrement de l'utilisateur

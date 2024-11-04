@@ -1,8 +1,18 @@
-<!-- UserInfos.svelte -->
 <script lang="ts">
-    import { address } from '../lib/user/UserStore';
+	import { username } from '../lib/user/UserStore';
+	import { goto } from '$app/navigation';
+
+	// Fonction pour rediriger vers la page de profil
+	function goToProfile() {
+		goto('/user/profile');
+	}
 </script>
 
-<div>
-    <p>Connecté en tant que : {$address}</p>
+<div class="flex items-center">
+	<p>
+		Hello, 
+		<button on:click={goToProfile} class="font-semibold text-white-500 underline cursor-pointer hover:text-yellow-400">
+			{$username}
+        </button>!
+	</p>
 </div>

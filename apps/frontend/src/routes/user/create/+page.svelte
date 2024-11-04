@@ -3,53 +3,43 @@
 	import PassphraseInput from '../../../components/PassphraseInput.svelte';
 	import { goto } from '$app/navigation';
 	import { initializeEncryptionKey } from '$lib/auth/EncryptionKey';
+	import { updateUserProfile } from '$lib/auth/Auth';
 
+	let step = 1; // Indique l'étape actuelle (1 pour sélection de rôle, 2 pour informations de profil)
 	let role = ""; // Rôle choisi par l'utilisateur (Listener ou Artist)
 	let username = ""; // Nom d'utilisateur requis pour tous
 	let artistName = ""; // Nom d'artiste, requis uniquement pour les artistes
 	let passphrase = ""; // Passphrase, nécessaire uniquement pour les artistes
-	let showArtistFields = false; // Affiche le champ pour nom d'artiste et passphrase pour les artistes
 
-	// Gère la sélection du rôle et l'affichage des champs appropriés
+	// Gestion de la sélection du rôle et transition vers l'étape suivante
 	function handleRoleSelection(selectedRole: string) {
 		role = selectedRole;
-		showArtistFields = role === "Artist"; // Affiche le champ de passphrase et nom d'artiste si le rôle est Artiste
+		step = 2; // Passe à l'étape suivante
 	}
 
-	// Soumet le profil utilisateur
+	// Permet de revenir à l'étape précédente
+	function goBack() {
+		if (step > 1) step -= 1;
+	}
+
+	// Soumet le profil utilisateur en utilisant la fonction `updateUserProfile` d'Auth.js
 	async function handleSubmit() {
 		if (!username) {
 			status.set("Veuillez entrer un nom d'utilisateur.");
 			return;
 		}
+
 		if (role === "Artist" && passphrase) {
 			await initializeEncryptionKey(passphrase); // Initialise la clé de chiffrement pour les artistes
 		}
 
-		// Récupère le DID de l'utilisateur depuis localStorage
-		const did = localStorage.getItem('userDID');
-		if (!did) {
-			status.set("Erreur : Impossible de récupérer l'identifiant utilisateur.");
-			return;
-		}
-
-		// Envoie les informations de profil au backend pour stockage
 		try {
-			const response = await fetch('http://localhost:3000/auth/store-profile', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ did, role, username, artistName: role === "Artist" ? artistName : undefined }),
-			});
-			const data = await response.json();
-
-			if (data.success) {
-				goto('/user/profil'); // Redirige vers le profil après création
-			} else {
-				status.set("Erreur lors de la création du profil.");
-			}
+			// Met à jour le profil utilisateur en passant les informations
+			await updateUserProfile({ role, username, artistName: role === "Artist" ? artistName : undefined });
+			goto('/user/profile'); // Redirige vers le profil après mise à jour
 		} catch (error) {
-			console.error("Erreur lors de la création du profil utilisateur :", error);
-			status.set("Erreur lors de la création du profil utilisateur.");
+			console.error("Erreur lors de la mise à jour du profil utilisateur :", error);
+			status.set("Erreur lors de la mise à jour du profil utilisateur.");
 		}
 	}
 </script>
@@ -57,8 +47,8 @@
 <main class="flex flex-col items-center justify-center min-h-screen">
 	<h1 class="text-2xl font-bold mb-4">Création de votre profil</h1>
 
-	{#if !role}
-		<!-- Sélection du rôle de l'utilisateur -->
+	{#if step === 1}
+		<!-- Étape 1 : Sélection du rôle de l'utilisateur -->
 		<h2 class="text-xl mb-4">Êtes-vous un artiste ou un listener ?</h2>
 		<div class="flex space-x-4">
 			<button on:click={() => handleRoleSelection('Listener')} class="rounded-md bg-blue-500 p-2 text-white">
@@ -70,8 +60,8 @@
 		</div>
 	{/if}
 
-	{#if role}
-		<!-- Informations de profil supplémentaires -->
+	{#if step === 2}
+		<!-- Étape 2 : Informations de profil supplémentaires -->
 		<div class="mt-8 p-6 bg-blue-700 text-white rounded-lg shadow-lg max-w-2xl mx-auto">
 			<label class="block mb-4">
 				<span class="text-lg">Nom d'utilisateur</span>
@@ -96,9 +86,14 @@
 				<PassphraseInput bind:passphrase />
 			{/if}
 
-			<button on:click={handleSubmit} class="mt-4 rounded-md bg-green-500 p-2 text-white font-semibold">
-				Valider
-			</button>
+			<div class="flex justify-between">
+				<button on:click={goBack} class="rounded-md bg-gray-500 p-2 text-white font-semibold">
+					Retour
+				</button>
+				<button on:click={handleSubmit} class="rounded-md bg-green-500 p-2 text-white font-semibold">
+					Valider
+				</button>
+			</div>
 		</div>
 	{/if}
 </main>

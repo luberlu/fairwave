@@ -8,7 +8,9 @@ import { dirname, join } from 'path';
 interface UserProfile {
     did: string;
     signature: string;
-    // Ajoutez d'autres champs si nécessaire, comme role, encryptionKey, etc.
+    username?: string;
+    artistName?: string;
+    isArtist?: boolean;
 }
 
 // Interface pour l'accusé de réception GunDB (ack)
@@ -27,7 +29,7 @@ export class DbService implements OnModuleInit {
 
         const __filename = fileURLToPath(import.meta.url);
         const __dirname = dirname(__filename);
-        
+
         // Initialiser Gun avec le serveur HTTP
         this.gun = Gun({
             web: server,
@@ -69,6 +71,23 @@ export class DbService implements OnModuleInit {
                     resolve(data);
                 } else {
                     resolve(null); // Si aucun profil n'est trouvé, résout avec null
+                }
+            });
+        });
+    }
+
+    // Méthode pour mettre à jour un profil utilisateur par DID
+    async updateUserProfile(did: string, updates: Partial<UserProfile>): Promise<UserProfile> {
+        return new Promise((resolve, reject) => {
+            const userProfiles = this.gun.get('userProfiles');
+            
+            // Met à jour uniquement les champs définis dans `updates`
+            userProfiles.get(did).put(updates, (ack: GunAck) => {
+                if (ack.err) {
+                    reject(new Error('Erreur lors de la mise à jour du profil utilisateur'));
+                } else {
+                    // Fusionne `did` avec les champs définis dans `updates`
+                    resolve({ did, ...updates } as UserProfile);
                 }
             });
         });

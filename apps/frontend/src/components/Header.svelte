@@ -1,14 +1,15 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { logout } from '../lib/user/UserActions';
-	import { status, isAuthenticated, encryptionKey } from '../lib/user/UserStore';
+	import { status, isAuthenticated } from '../lib/user/UserStore';
 	import UserInfos from './UserInfos.svelte';
-	import PassphraseInput from './PassphraseInput.svelte';
 
 	let showStatus = false;
 
 	// Méthode de déconnexion
 	function handleLogout() {
 		logout();
+		goto('/');
 		showStatus = true;
 	}
 </script>
@@ -34,10 +35,10 @@
 		</div>
 	</div>
 
-	<!-- Affiche PassphraseInput seulement si l'utilisateur est authentifié sans clé de chiffrement -->
+	<!-- Affiche PassphraseInput seulement si l'utilisateur est authentifié sans clé de chiffrement
 	{#if $isAuthenticated && !$encryptionKey}
 		<PassphraseInput />
-	{/if}
+	{/if}*/-->
 
 	{#if showStatus && $status}
 		<div class="mt-2 rounded-md bg-blue-500 p-2 text-center text-white">
