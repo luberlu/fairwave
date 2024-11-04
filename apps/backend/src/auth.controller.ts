@@ -6,11 +6,12 @@ export class AuthController {
     constructor(private readonly gunDbService: DbService) {}
 
     @Post('store-profile')
-    async storeProfile(@Body() body: { address: string; signature: string; did: string }): Promise<any> {
-        const { address, did } = body;
+    async storeProfile(@Body() body: { did: string; signature: string }): Promise<any> {
+        const { did, signature } = body;
 
         try {
-            const profile = await this.gunDbService.storeUserProfile({ address, did });
+            // On utilise le DID pour stocker le profil utilisateur
+            const profile = await this.gunDbService.storeUserProfile({ did, signature });
             return { success: true, message: 'Profil utilisateur stocké avec succès', profile };
         } catch (error) {
             console.error('Erreur lors du stockage du profil utilisateur', error);
@@ -18,10 +19,11 @@ export class AuthController {
         }
     }
 
-    @Get('get-profile/:address')
-    async getProfile(@Param('address') address: string): Promise<any> {
+    @Get('get-profile/:did')
+    async getProfile(@Param('did') did: string): Promise<any> {
         try {
-            const profile = await this.gunDbService.getUserProfile(address);
+            // On utilise le DID pour récupérer le profil utilisateur
+            const profile = await this.gunDbService.getUserProfile(did);
             return profile ? { success: true, profile } : { success: false, message: 'Profil non trouvé' };
         } catch (error) {
             console.error('Erreur lors de la récupération du profil utilisateur', error);

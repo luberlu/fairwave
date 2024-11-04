@@ -6,8 +6,9 @@ import { dirname, join } from 'path';
 
 // Interface pour le profil utilisateur
 interface UserProfile {
-    address: string;
     did: string;
+    signature: string;
+    // Ajoutez d'autres champs si nécessaire, comme role, encryptionKey, etc.
 }
 
 // Interface pour l'accusé de réception GunDB (ack)
@@ -39,37 +40,37 @@ export class DbService implements OnModuleInit {
         });
     }
 
-     // Méthode pour exposer Gun aux autres services
+    // Méthode pour exposer Gun aux autres services
     getInstance() {
         return this.gun;
     }
 
-    // Méthode pour stocker un profil utilisateur dans Gun
+    // Méthode pour stocker un profil utilisateur dans Gun en utilisant DID
     async storeUserProfile(profile: UserProfile): Promise<UserProfile> {
         return new Promise((resolve, reject) => {
             const userProfiles = this.gun.get('userProfiles');
-            userProfiles.set(profile, (ack: GunAck) => {
+            userProfiles.get(profile.did).put(profile, (ack: GunAck) => {
                 if (ack.err) {
                     reject(new Error('Erreur lors du stockage du profil utilisateur'));
                 } else {
-                    console.log(`Profil utilisateur stocké pour ${profile.address}`);
+                    console.log(`Profil utilisateur stocké pour DID ${profile.did}`);
                     resolve(profile);
                 }
             });
         });
     }
 
-    // Méthode pour récupérer un profil utilisateur par adresse
-    async getUserProfile(address: string): Promise<UserProfile | null> {
-        return new Promise((resolve, reject) => {
+    // Méthode pour récupérer un profil utilisateur par DID
+    async getUserProfile(did: string): Promise<UserProfile | null> {
+        return new Promise((resolve) => {
             const userProfiles = this.gun.get('userProfiles');
-            userProfiles.map().once((data: UserProfile) => {
-                if (data && data.address === address) {
+            userProfiles.get(did).once((data: UserProfile) => {
+                if (data) {
                     resolve(data);
+                } else {
+                    resolve(null); // Si aucun profil n'est trouvé, résout avec null
                 }
             });
-            // Si aucun profil n'est trouvé, on résout avec null
-            setTimeout(() => resolve(null), 1000); // Ajoute un timeout pour éviter des promesses en attente indéfinie
         });
     }
 }

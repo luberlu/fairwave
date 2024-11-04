@@ -1,13 +1,14 @@
-import { address, status, isAuthenticated, encryptionKey } from './UserStore';
+import { status, isAuthenticated, encryptionKey } from './UserStore';
 import { authenticate as authStoreAuthenticate } from '../auth/Auth';
 import { initializeEncryptionKey } from '../auth/EncryptionKey';
+
+const BACKEND_URL = 'http://localhost:3000/auth';
 
 export async function authenticate() {
 	await authStoreAuthenticate();
 }
 
 export function logout() {
-	address.set('');
 	isAuthenticated.set(false);
 	encryptionKey.set(null);
 	localStorage.removeItem('userAddress');
@@ -34,4 +35,18 @@ export function showStatusMessage() {
 		}, 3000);
 		return value;
 	});
+}
+
+export async function checkUserExists(): Promise<boolean> {
+	const did = localStorage.getItem('userDID');
+	if (!did) return false;
+
+	try {
+		const response = await fetch(`${BACKEND_URL}/get-profile/${encodeURIComponent(did)}`);
+		const data = await response.json();
+		return data.success && data.profile !== null;
+	} catch (error) {
+		console.error("Erreur lors de la vérification de l'existence du profil utilisateur :", error);
+		return false;
+	}
 }

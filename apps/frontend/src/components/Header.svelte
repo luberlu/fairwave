@@ -1,16 +1,10 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { authenticate, logout } from '../lib/user/UserActions';
+	import { logout } from '../lib/user/UserActions';
 	import { status, isAuthenticated, encryptionKey } from '../lib/user/UserStore';
-	import { checkAuthentication } from '../lib/auth/Auth';
 	import UserInfos from './UserInfos.svelte';
 	import PassphraseInput from './PassphraseInput.svelte';
 
 	let showStatus = false;
-
-	onMount(() => {
-		checkAuthentication();
-	});
 
 	// Méthode de déconnexion
 	function handleLogout() {
@@ -32,12 +26,10 @@
 			{#if $isAuthenticated}
 				<UserInfos />
 				<button on:click={handleLogout} class="rounded-md bg-red-500 p-2 text-white">
-					Déconnexion
+					Log out
 				</button>
 			{:else}
-				<button on:click={authenticate} class="rounded-md bg-blue-500 p-2 text-white">
-					Se connecter avec MetaMask
-				</button>
+				<a href="/connect" class="rounded-md bg-blue-500 p-2 text-white">Log In</a>
 			{/if}
 		</div>
 	</div>

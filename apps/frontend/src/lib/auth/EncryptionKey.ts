@@ -1,7 +1,6 @@
 import CryptoJS from 'crypto-js';
 import Gun from 'gun';
 import { encryptionKey } from '../user/UserStore';
-import { getAuthenticatedAddress } from './Auth';
 
 const gun = Gun(['http://localhost:8765/gun']);
 
