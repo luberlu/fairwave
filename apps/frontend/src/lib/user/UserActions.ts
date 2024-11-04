@@ -1,4 +1,4 @@
-import { status, isAuthenticated, encryptionKey } from './UserStore';
+import { did, username, role, artistName, status, isAuthenticated, encryptionKey } from './UserStore';
 import { authenticate as authStoreAuthenticate } from '../auth/Auth';
 import { initializeEncryptionKey } from '../auth/EncryptionKey';
 
@@ -7,10 +7,15 @@ export async function authenticate() {
 }
 
 export function logout() {
+	// Réinitialiser chaque store à sa valeur initiale
 	isAuthenticated.set(false);
 	encryptionKey.set(null);
-	localStorage.removeItem('userAddress');
-	localStorage.removeItem('encryptionKey');
+	did.set('');
+	username.set('');
+	role.set('');
+	artistName.set('');
+
+	// Mettre à jour le statut de déconnexion
 	status.set('Déconnecté avec succès.');
 	showStatusMessage();
 }

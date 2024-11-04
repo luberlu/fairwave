@@ -1,6 +1,6 @@
-import { getAuthenticatedAddress } from '../../auth/Auth';
-import { getEncryptionKey } from '../../auth/EncryptionKey';
+import { did, encryptionKey } from '../../user/UserStore';
 import { Music } from '../Music';
+import { get } from 'svelte/store';
 
 export async function fetchMusic(
 	cid: string,
@@ -15,15 +15,14 @@ export async function fetchMusic(
 	// Initialiser l'objet Music
 	const music = new Music(audioElement);
 
-	// Récupération de la clé de déchiffrement et de l'adresse de l'utilisateur
-	const encryptionKey = getEncryptionKey();
-	const storedAddress = getAuthenticatedAddress();
+	const key = get(encryptionKey);
+	const userDid = get(did);
 
-	if (!encryptionKey) {
+	if (!key) {
 		music.status.message = 'Erreur : Impossible de récupérer la clé de déchiffrement.';
 		return music;
 	}
-	if (!storedAddress) {
+	if (!userDid) {
 		music.status.message = 'Erreur : Utilisateur non authentifié.';
 		return music;
 	}
@@ -32,8 +31,8 @@ export async function fetchMusic(
 		// Requête pour récupérer le fichier audio
 		const response = await fetch(`/api/music/stream/${cid}`, {
 			headers: {
-				'X-Encryption-Key': encryptionKey,
-				'X-User-Address': storedAddress
+				'X-Encryption-Key': key,
+				'X-User-Did': userDid
 			}
 		});
 
@@ -60,14 +59,14 @@ export async function fetchMusic(
 }
 
 export async function fetchUserTracks() {
-	const storedAddress = getAuthenticatedAddress();
+	const userDid = get(did);
 
-	if (!storedAddress) {
+	if (!did) {
 		throw new Error('Utilisateur non authentifié');
 	}
 
 	const response = await fetch('/api/music/user-tracks', {
-		headers: { 'X-User-Address': storedAddress }
+		headers: { 'X-User-Did': userDid }
 	});
 	const data = await response.json();
 	console.log('data => ', data);

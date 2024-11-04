@@ -26,14 +26,11 @@ export class MusicController {
   @Post('upload')
   @UseInterceptors(FileInterceptor('file'))
   async uploadMusic(
-    @Body() body: { title: string; secretKey: string; userAddress: string },
+    @Body() body: { title: string; secretKey: string; userDid: string },
     @UploadedFile() file: Express.Multer.File,
   ) {
-    if (!body.userAddress) {
-      throw new HttpException(
-        'Utilisateur non authentifié',
-        HttpStatus.UNAUTHORIZED,
-      );
+    if (!body.userDid) {
+      throw new HttpException('Utilisateur non authentifié', HttpStatus.UNAUTHORIZED);
     }
 
     try {
@@ -46,6 +43,7 @@ export class MusicController {
 
       // Étape 2 : Vérifier si le CID est déjà enregistré sur la blockchain
       const trackExists = await this.musicService.isTrackRegistered(
+        body.userDid,
         result.manifestCID,
       );
 
@@ -55,16 +53,13 @@ export class MusicController {
 
       // Étape 3 : Enregistrer le morceau sur la blockchain
       await this.musicService.registerTrackOnBlockchain(
-        body.userAddress,
+        body.userDid,
         result.manifestCID,
       );
 
       return { success: true, title: body.title, cid: result.manifestCID };
     } catch (error) {
-      console.error(
-        "Erreur lors de l'upload ou de l'enregistrement sur la blockchain:",
-        error,
-      );
+      console.error("Erreur lors de l'upload ou de l'enregistrement sur la blockchain:", error);
       return {
         success: false,
         message: "Erreur lors de l'enregistrement sur la blockchain",
@@ -75,25 +70,22 @@ export class MusicController {
   @Get('stream/:cid')
   async streamMusic(
     @Param('cid') cid: string,
-    @Headers('X-User-Address') userAddress: string, // Adresse de l'utilisateur
+    @Headers('X-User-Did') userDid: string, // DID de l'utilisateur
     @Headers('X-Encryption-Key') encryptionKey: string,
     @Res() res: Response,
   ) {
-    // Vérifiez que l'adresse est fournie
-    if (!userAddress) {
+    if (!userDid) {
       return res.status(401).send('Utilisateur non authentifié');
     }
 
     // Vérifiez sur la blockchain si l'utilisateur est bien le propriétaire du morceau
     const isOwner = await this.musicService.verifyOwnershipOnBlockchain(
       cid,
-      userAddress,
+      userDid,
     );
 
     if (!isOwner) {
-      return res
-        .status(403)
-        .send("Accès refusé : Vous n'êtes pas le propriétaire de ce fichier.");
+      return res.status(403).send("Accès refusé : Vous n'êtes pas le propriétaire de ce fichier.");
     }
 
     // Si la vérification est réussie, obtenez le flux de musique
@@ -117,16 +109,13 @@ export class MusicController {
   }
 
   @Get('user-tracks')
-  async getUserTracks(@Headers('X-User-Address') userAddress: string) {
-    if (!userAddress) {
-      throw new HttpException(
-        'Adresse de l’utilisateur manquante',
-        HttpStatus.BAD_REQUEST,
-      );
+  async getUserTracks(@Headers('X-User-Did') userDid: string) {
+    if (!userDid) {
+      throw new HttpException('DID de l’utilisateur manquant', HttpStatus.BAD_REQUEST);
     }
 
     try {
-      const tracks = await this.musicService.getUserTracks(userAddress);
+      const tracks = await this.musicService.getUserTracks(userDid);
       return { success: true, tracks };
     } catch (error) {
       console.error('Erreur lors de la récupération des morceaux:', error);

@@ -1,27 +1,28 @@
-// uploadMusic.ts
-import { getAuthenticatedAddress } from '../../auth/Auth';
-import { getEncryptionKey } from '../../auth/EncryptionKey';
+import { did, encryptionKey } from '../../user/UserStore';
+import { get } from 'svelte/store';
 
 export async function uploadMusic(title: string, file: File | null) {
 	if (!file || !title) {
 		return { success: false, message: "Champs manquants" };
 	}
-
-	const storedAddress = getAuthenticatedAddress();
-	if (!storedAddress) {
+	
+	const userDid = get(did);
+	
+	if (!userDid) {
 		return { success: false, message: "Utilisateur non authentifié" };
 	}
 
-	const secretKey = getEncryptionKey();
-	if (!secretKey) {
+	const key = get(encryptionKey);
+
+	if (!key) {
 		return { success: false, message: "Erreur : clé de chiffrement non définie" };
 	}
 
 	const formData = new FormData();
 	formData.append('title', title);
 	formData.append('file', file);
-	formData.append('secretKey', secretKey);
-	formData.append('userAddress', storedAddress);
+	formData.append('secretKey', key);
+	formData.append('userDid', userDid);
 
 	try {
 		const response = await fetch('/api/music/upload', {

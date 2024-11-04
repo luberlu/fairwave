@@ -1,5 +1,5 @@
 import { Injectable, HttpException } from '@nestjs/common';
-import { ethers, ContractTransaction } from 'ethers';
+import { ethers } from 'ethers';
 import { createHelia } from 'helia';
 import { unixfs } from '@helia/unixfs';
 import { FsBlockstore } from 'blockstore-fs';
@@ -22,9 +22,9 @@ export class MusicService {
     this.contract = new ethers.Contract(
       '0x5fbdb2315678afecb367f032d93f642f64180aa3', // Remplace par l'adresse de ton contrat déployé
       [
-        'function registerTrack(string cid) public',
-        'function isOwner(address user, string cid) public view returns (bool)',
-        'function getTracksByOwner(address owner) public view returns (string[])'
+        'function registerTrack(string did, string cid) public',
+        'function isOwner(string did, string cid) public view returns (bool)',
+        'function getTracksByOwner(string did) public view returns (string[])'
       ],
       this.provider,
     );
@@ -47,70 +47,55 @@ export class MusicService {
     return { manifestCID };
   }
 
-  async isTrackRegistered(cid: string): Promise<boolean> {
+  async isTrackRegistered(did: string, cid: string): Promise<boolean> {
     try {
-      const isOwner = await this.contract.isOwner(this.contract.target, cid);
+      const isOwner = await this.contract.isOwner(did, cid); // Le DID sera passé lors de l'enregistrement
       return isOwner;
     } catch (error) {
-      console.error(
-        "Erreur lors de la vérification de l'existence du morceau:",
-        error,
-      );
+      console.error("Erreur lors de la vérification de l'existence du morceau:", error);
       return false; // En cas d'erreur, on considère que le morceau n'est pas enregistré
     }
   }
 
-  async getUserTracks(userAddress: string): Promise<string[]> {
+  async getUserTracks(userDid: string): Promise<string[]> {
     try {
-        const userTracks = await this.contract.getTracksByOwner(userAddress);
-        return userTracks;
+      const userTracks = await this.contract.getTracksByOwner(userDid);
+      return userTracks;
     } catch (error) {
-        console.error('Erreur lors de la récupération des morceaux de l\'utilisateur:', error);
-        throw new Error('Impossible de récupérer les morceaux de l\'utilisateur.');
+      console.error('Erreur lors de la récupération des morceaux de l\'utilisateur:', error);
+      throw new Error('Impossible de récupérer les morceaux de l\'utilisateur.');
     }
-}
+  }
 
-  // Enregistre le morceau sur la blockchain
-  async registerTrackOnBlockchain(userAddress: string, cid: string) {
+  // Enregistre le morceau sur la blockchain avec le DID
+  async registerTrackOnBlockchain(userDid: string, cid: string) {
     console.log(
-      'register new track on blockchain: userAdress: ',
-      userAddress,
+      'Enregistrement d\'un nouveau morceau sur la blockchain: userDid: ',
+      userDid,
       ' cid => ',
       cid,
     );
 
-    const signer = await this.provider.getSigner(userAddress); // Récupérer le Signer via l’adresse
+    const signer = await this.provider.getSigner(); // Récupérer le Signer via l’adresse
     const contractWithSigner = this.contract.connect(signer); // Connecter le signer au contrat
 
     try {
       const registerTrackFn = contractWithSigner.getFunction('registerTrack');
-      const transaction = await registerTrackFn(cid);
+      const transaction = await registerTrackFn(userDid, cid); // Passer le DID lors de l'enregistrement
       await transaction.wait();
       return transaction.hash;
     } catch (error) {
-      console.error(
-        "Erreur lors de l'enregistrement sur la blockchain:",
-        error,
-      );
-      throw new HttpException(
-        "Erreur lors de l'enregistrement sur la blockchain",
-        403,
-      );
+      console.error("Erreur lors de l'enregistrement sur la blockchain:", error);
+      throw new HttpException("Erreur lors de l'enregistrement sur la blockchain", 403);
     }
   }
 
-  async verifyOwnershipOnBlockchain(
-    cid: string,
-    userAddress: string,
-  ): Promise<boolean> {
+  async verifyOwnershipOnBlockchain(cid: string, userDid: string): Promise<boolean> {
     try {
-      const isOwner = await this.contract.isOwner(userAddress, cid);
+      const isOwner = await this.contract.isOwner(userDid, cid); // Passer le DID lors de la vérification
       return isOwner;
     } catch (error) {
-      console.error(
-        'Erreur lors de la vérification de la propriété sur la blockchain:',
-        error,
-      );
+      console.error('Erreur lors de la vérification de la propriété sur la blockchain:', error);
       throw new Error('Erreur lors de la vérification de la propriété');
     }
   }
@@ -175,10 +160,7 @@ export class MusicService {
     try {
       metadata = JSON.parse(manifestData);
     } catch (error) {
-      console.error(
-        'Erreur lors du parsing des métadonnées du manifest:',
-        error,
-      );
+      console.error('Erreur lors du parsing des métadonnées du manifest:', error);
       return { stream: null, metadata: null };
     }
 
@@ -197,10 +179,7 @@ export class MusicService {
 
         return Buffer.from(decryptedData.toString(), 'base64');
       } catch (error) {
-        console.error(
-          `Erreur lors de la récupération ou du déchiffrement du chunk ${chunkCID}:`,
-          error,
-        );
+        console.error(`Erreur lors de la récupération ou du déchiffrement du chunk ${chunkCID}:`, error);
         throw new Error('Erreur de déchiffrement ou de récupération du chunk.');
       }
     });

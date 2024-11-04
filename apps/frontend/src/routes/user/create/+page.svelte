@@ -83,7 +83,7 @@
 						placeholder="Entrez votre nom d'artiste"
 					/>
 				</label>
-				<PassphraseInput bind:passphrase />
+				<PassphraseInput isFirstTime bind:passphrase />
 			{/if}
 
 			<div class="flex justify-between">
