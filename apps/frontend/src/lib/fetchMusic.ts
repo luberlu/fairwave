@@ -1,4 +1,5 @@
-import { getAuthenticatedAddress, getEncryptionKey } from './authStore';
+import { getAuthenticatedAddress } from './Auth';
+import { getEncryptionKey } from './Encryption';
 import { Music } from './Music';
 
 export async function fetchMusic(
@@ -69,5 +70,6 @@ export async function fetchUserTracks() {
 		headers: { 'X-User-Address': storedAddress }
 	});
 	const data = await response.json();
+	console.log('data => ', data);
 	return data.success ? data.tracks : [];
 }

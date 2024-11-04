@@ -1,13 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { User } from '../lib/User';
-	import {
-		address,
-		status,
-		isAuthenticated,
-		encryptionKey,
-		checkAuthentication
-	} from '../lib/authStore';
+	import { authenticate, logout } from '../lib/userActions';
+	import { status, isAuthenticated, encryptionKey } from '../lib/UserStore';
+	import { checkAuthentication } from '../lib/Auth';
 	import UserInfos from './UserInfos.svelte';
 	import PassphraseInput from './PassphraseInput.svelte';
 
@@ -19,7 +14,7 @@
 
 	// Méthode de déconnexion
 	function handleLogout() {
-		User.logout();
+		logout();
 		showStatus = true;
 	}
 </script>
@@ -40,7 +35,7 @@
 					Déconnexion
 				</button>
 			{:else}
-				<button on:click={User.authenticate} class="rounded-md bg-blue-500 p-2 text-white">
+				<button on:click={authenticate} class="rounded-md bg-blue-500 p-2 text-white">
 					Se connecter avec MetaMask
 				</button>
 			{/if}

@@ -2,7 +2,7 @@
     import { onMount } from 'svelte';
     import { fetchUserTracks } from '../../lib/fetchMusic';
     import AudioPlayer from '../../components/AudioPlayer.svelte';
-	import { getEncryptionKey } from '$lib/authStore';
+	import { getEncryptionKey } from '$lib/Encryption';
 
     let tracks: string[] = [];
     let statusMessage: string = 'Chargement des morceaux...';
@@ -43,12 +43,12 @@
     {/if}
 
     <!-- Affichage de la liste des morceaux -->
-    {#if tracks.length > 0 && encryptionKey}
+    {#if tracks.length > 0}
         <ul class="space-y-2">
             {#each tracks as track}
                 <li class="border p-2 rounded-md bg-gray-100">
                     CID: {track}
-                    <AudioPlayer cid={track} encryptionKey={encryptionKey} />
+                    <AudioPlayer cid={track} />
                 </li>
             {/each}
         </ul>
