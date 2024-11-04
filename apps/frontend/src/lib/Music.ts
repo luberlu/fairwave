@@ -1,14 +1,13 @@
-// Music.ts
 export class Music {
 	title: string | null = null;
 	duration: number | null = null;
 	mediaSource: MediaSource | null = null;
 	sourceBuffer: SourceBuffer | null = null;
 	status = { success: false, message: '' };
+	reader: ReadableStreamDefaultReader<Uint8Array> | null = null; // Déclaration du reader
 
 	constructor(public audioElement: HTMLAudioElement) {
 		this.mediaSource = new MediaSource();
-		this.audioElement.src = URL.createObjectURL(this.mediaSource);
 	}
 
 	initializeStreaming(reader: ReadableStreamDefaultReader<Uint8Array> | null) {
@@ -20,31 +19,36 @@ export class Music {
 			return;
 		}
 
-		// Active le statut dès que l'ouverture de la source commence
+		// Stockez le reader pour l'utiliser dans onSourceOpen
+		this.reader = reader;
+        this.mediaSource.addEventListener('sourceopen', this.onSourceOpen.bind(this));
+		this.audioElement.src = URL.createObjectURL(this.mediaSource);
+
 		this.status = {
 			success: true,
 			message: 'Lecture du flux audio en cours.'
 		};
+	}
 
-		this.mediaSource.addEventListener('sourceopen', async () => {
-			this.sourceBuffer = this.mediaSource!.addSourceBuffer('audio/mpeg');
-			let isAppending = false;
+	private async onSourceOpen() {
+		if (!this.mediaSource || !this.reader) return;
 
-			while (true) {
-				const { done, value } = await reader.read();
-				if (done) break;
+		this.sourceBuffer = this.mediaSource.addSourceBuffer('audio/mpeg');
+		let isAppending = false;
 
-				// Gestion des buffers pour éviter des erreurs lors de l'ajout de données
-				while (isAppending) {
-					await new Promise((resolve) => setTimeout(resolve, 50));
-				}
+		while (true) {
+			const { done, value } = await this.reader.read();
+			if (done) break;
 
-				isAppending = true;
-				this.sourceBuffer.appendBuffer(value);
-				this.sourceBuffer.addEventListener('updateend', () => {
-					isAppending = false;
-				});
+			while (isAppending) {
+				await new Promise((resolve) => setTimeout(resolve, 50));
 			}
-		});
+
+			isAppending = true;
+			this.sourceBuffer.appendBuffer(value);
+			this.sourceBuffer.addEventListener('updateend', () => {
+				isAppending = false;
+			});
+		}
 	}
 }

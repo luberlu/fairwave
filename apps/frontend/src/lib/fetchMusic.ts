@@ -43,8 +43,8 @@ export async function fetchMusic(
 		music.title = response.headers.get('X-Title');
 
 		// Démarrer le streaming audio
-		const reader = response.body?.getReader() || null;
-		music.initializeStreaming(reader);
+        const reader = response.body?.getReader() || null;
+        music.initializeStreaming(reader);
 	} catch (error) {
 		if (error instanceof Error) {
 			music.status.message = `Erreur : ${error.message}`;
