@@ -7,9 +7,11 @@ Fairwave est une **plateforme de streaming de musique décentralisée**, conçue
 - **Svelte**: Développement du front-end avec une interface utilisateur moderne et réactive.
 - **Blockchain Ethereum**: Enregistrement des morceaux et vérification de la propriété.
 - **IPFS**: Stockage décentralisé des fichiers audio, garantissant leur accessibilité. Les fichiers sont entièrement cryptés, et pour pouvoir les lire, les utilisateurs doivent se connecter et payer pour le streaming.
-- **Gun**: Gestion des métadonnées des morceaux dans une base de données décentralisée.
+- **Pinata**: Prévue pour l'envoi des fichiers vers des nœuds IPFS.
+- **Gun**: Base de données décentralisée utilisée pour gérer non seulement les métadonnées des morceaux, mais aussi les informations des utilisateurs, leurs playlists et d'autres données liées à la plateforme.
 - **Helia**: Interactions simplifiées avec IPFS pour une meilleure performance.
 - **NestJS**: Construction de l'API backend pour gérer les requêtes des utilisateurs.
+- **MetaMask**: Utilisé pour l'authentification des utilisateurs et la gestion des transactions sur la blockchain.
 
 ## ⚠️ Remarque Importante
 
