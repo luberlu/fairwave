@@ -1,55 +1,26 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+	import { User } from '../lib/User';
 	import {
 		address,
 		status,
 		isAuthenticated,
-		authenticate,
-		checkAuthentication,
 		encryptionKey,
-		initializeEncryptionKey,
+		checkAuthentication
 	} from '../lib/authStore';
 	import UserInfos from './UserInfos.svelte';
-	import { onMount } from 'svelte';
+	import PassphraseInput from './PassphraseInput.svelte';
 
 	let showStatus = false;
-	let showPassphraseInput = false;
-	let passphrase = '';
 
 	onMount(() => {
 		checkAuthentication();
 	});
 
-	// Bloc réactif pour afficher le champ de passphrase lorsque l'utilisateur est authentifié mais sans clé de chiffrement
-	$: showPassphraseInput = $isAuthenticated && !$encryptionKey;
-
-	function logout() {
-		address.set('');
-		isAuthenticated.set(false);
-		encryptionKey.set(null);
-		localStorage.removeItem('userAddress');
-		localStorage.removeItem('encryptionKey');
-		status.set('Déconnecté avec succès.');
-		showStatusMessage();
-	}
-
-	function showStatusMessage() {
+	// Méthode de déconnexion
+	function handleLogout() {
+		User.logout();
 		showStatus = true;
-		setTimeout(() => {
-			showStatus = false;
-			status.set('');
-		}, 3000);
-	}
-
-	async function setEncryptionKey() {
-		if (passphrase) {
-			await initializeEncryptionKey(passphrase);
-			showPassphraseInput = false;
-			status.set("Clé de chiffrement générée avec succès !");
-			showStatusMessage();
-		} else {
-			status.set("Veuillez entrer une passphrase valide.");
-			showStatusMessage();
-		}
 	}
 </script>
 
@@ -64,31 +35,21 @@
 				<a href="/list" class="hover:underline">List</a>
 			</nav>
 			{#if $isAuthenticated}
-				<UserInfos {address} />
-				<button on:click={logout} class="rounded-md bg-red-500 p-2 text-white">
+				<UserInfos />
+				<button on:click={handleLogout} class="rounded-md bg-red-500 p-2 text-white">
 					Déconnexion
 				</button>
 			{:else}
-				<button on:click={authenticate} class="rounded-md bg-blue-500 p-2 text-white">
+				<button on:click={User.authenticate} class="rounded-md bg-blue-500 p-2 text-white">
 					Se connecter avec MetaMask
 				</button>
 			{/if}
 		</div>
 	</div>
 
-	{#if showPassphraseInput}
-		<div class="mt-4 p-4 bg-blue-600 text-white rounded-md">
-			<p class="mb-2">Veuillez entrer une passphrase pour sécuriser votre compte :</p>
-			<input
-				type="text"
-				bind:value={passphrase}
-				class="rounded-md p-2 text-black"
-				placeholder="Votre passphrase"
-			/>
-			<button on:click={setEncryptionKey} class="ml-2 rounded-md bg-green-500 p-2 text-white">
-				Valider
-			</button>
-		</div>
+	<!-- Affiche PassphraseInput seulement si l'utilisateur est authentifié sans clé de chiffrement -->
+	{#if $isAuthenticated && !$encryptionKey}
+		<PassphraseInput />
 	{/if}
 
 	{#if showStatus && $status}

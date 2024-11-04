@@ -1,30 +1,27 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
 	import { fetchMusic } from '../lib/fetchMusic';
+	import { Music } from '../lib/Music'; // Importer la classe Music
 
 	export let cid: string;
-	export let encryptionKey: string;
 
 	let audioElement: HTMLAudioElement | null = null;
 	let statusMessage = '';
-	let duration: number | null = null;
 	let title: string | null = null;
 	let isAudioReady = false; // Contrôle l'affichage des informations audio
+	let music: Music | null = null; // Instance de Music
 
 	async function playAudio() {
 		statusMessage = "Chargement de l'audio...";
-		const result = await fetchMusic(cid, audioElement, encryptionKey);
+		music = await fetchMusic(cid, audioElement);
 
-		console.log('result => ', result);
-
-		if (result.status) {
+		if (music?.status.success) {
 			// Mise à jour des informations audio en cas de succès
-			statusMessage = result.statusMessage;
-			duration = result.duration;
-			title = result.title;
+			statusMessage = music.status.message;
+			title = music.title;
 			isAudioReady = true; // Active l'affichage des informations audio
 		} else {
-			statusMessage = result.statusMessage || "Erreur lors du chargement de l'audio.";
+			statusMessage = music?.status.message || "Erreur lors du chargement de l'audio.";
 		}
 	}
 
@@ -51,14 +48,14 @@
 	</audio>
 
 	<!-- Informations audio uniquement lorsque prêt -->
-	{#if isAudioReady}
+	{#if isAudioReady && music?.status.success}
 		{#if title}
 			<h3 class="mt-4 text-lg font-semibold">Titre : {title}</h3>
 		{/if}
 
-		{#if duration}
+		{#if music.duration}
 			<p class="mb-2 text-sm text-gray-700">
-				Durée : {Math.floor(duration / 60)}:{(duration % 60).toFixed(0).padStart(2, '0')}
+				Durée : {Math.floor(music.duration / 60)}:{(music.duration % 60).toFixed(0).padStart(2, '0')}
 			</p>
 		{/if}
 	{/if}
