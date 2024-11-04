@@ -1,6 +1,6 @@
 import { address, status, isAuthenticated, encryptionKey } from './UserStore';
-import { authenticate as authStoreAuthenticate } from './Auth';
-import { initializeEncryptionKey } from './Encryption';
+import { authenticate as authStoreAuthenticate } from '../auth/Auth';
+import { initializeEncryptionKey } from '../auth/EncryptionKey';
 
 export async function authenticate() {
 	await authStoreAuthenticate();

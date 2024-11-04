@@ -1,6 +1,6 @@
 // uploadMusic.ts
-import { getAuthenticatedAddress } from './Auth';
-import { getEncryptionKey } from './Encryption';
+import { getAuthenticatedAddress } from '../../auth/Auth';
+import { getEncryptionKey } from '../../auth/EncryptionKey';
 
 export async function uploadMusic(title: string, file: File | null) {
 	if (!file || !title) {

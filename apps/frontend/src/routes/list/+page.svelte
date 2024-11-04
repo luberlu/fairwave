@@ -1,8 +1,8 @@
 <script lang="ts">
     import { onMount } from 'svelte';
-    import { fetchUserTracks } from '../../lib/fetchMusic';
+    import { fetchUserTracks } from '../../lib/music/actions/fetchMusic';
     import AudioPlayer from '../../components/AudioPlayer.svelte';
-	import { getEncryptionKey } from '$lib/Encryption';
+	import { getEncryptionKey } from '$lib/auth/EncryptionKey';
 
     let tracks: string[] = [];
     let statusMessage: string = 'Chargement des morceaux...';

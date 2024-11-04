@@ -1,8 +1,8 @@
 <!-- PassphraseInput.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
-	import { initializeEncryptionKey } from '../lib/Encryption';
-	import { status } from '../lib/UserStore';
+	import { initializeEncryptionKey } from '../lib/auth/EncryptionKey';
+	import { status } from '../lib/user/UserStore';
 
 	export let passphrase = '';
 	const dispatch = createEventDispatcher();

@@ -1,6 +1,6 @@
 <!-- UserInfos.svelte -->
 <script lang="ts">
-    import { address } from '../lib/UserStore';
+    import { address } from '../lib/user/UserStore';
 </script>
 
 <div>

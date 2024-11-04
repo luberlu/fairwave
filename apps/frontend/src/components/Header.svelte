@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { authenticate, logout } from '../lib/userActions';
-	import { status, isAuthenticated, encryptionKey } from '../lib/UserStore';
-	import { checkAuthentication } from '../lib/Auth';
+	import { authenticate, logout } from '../lib/user/UserActions';
+	import { status, isAuthenticated, encryptionKey } from '../lib/user/UserStore';
+	import { checkAuthentication } from '../lib/auth/Auth';
 	import UserInfos from './UserInfos.svelte';
 	import PassphraseInput from './PassphraseInput.svelte';
 

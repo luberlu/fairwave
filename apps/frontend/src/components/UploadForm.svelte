@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { uploadMusic } from '../lib/uploadMusic';
+    import { uploadMusic } from '../lib/music/actions/uploadMusic';
     import FileInfo from '../components/FileInfo.svelte';
     import { Icon, ArrowPath } from 'svelte-hero-icons';
 

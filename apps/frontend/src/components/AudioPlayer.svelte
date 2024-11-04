@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
-	import { fetchMusic } from '../lib/fetchMusic';
-	import { Music } from '../lib/Music'; // Importer la classe Music
+	import { fetchMusic } from '../lib/music/actions/fetchMusic';
+	import { Music } from '../lib/music/Music'; // Importer la classe Music
 
 	export let cid: string;
 

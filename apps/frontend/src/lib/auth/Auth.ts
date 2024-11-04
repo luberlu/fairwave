@@ -1,8 +1,8 @@
 // authStore.ts
 import Gun from 'gun';
 import { ethers } from 'ethers';
-import { address, status, isAuthenticated, encryptionKey } from './UserStore';
-import { getEncryptionKey } from './Encryption';
+import { address, status, isAuthenticated, encryptionKey } from '../user/UserStore';
+import { getEncryptionKey } from './EncryptionKey';
 
 const gun = Gun(['http://localhost:8765/gun']);
 

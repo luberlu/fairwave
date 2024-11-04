@@ -1,6 +1,6 @@
-import { getAuthenticatedAddress } from './Auth';
-import { getEncryptionKey } from './Encryption';
-import { Music } from './Music';
+import { getAuthenticatedAddress } from '../../auth/Auth';
+import { getEncryptionKey } from '../../auth/EncryptionKey';
+import { Music } from '../Music';
 
 export async function fetchMusic(
 	cid: string,
