@@ -11,10 +11,8 @@ Fairwave est une **plateforme de streaming de musique décentralisée**, conçue
 - **Helia**: Interactions simplifiées avec IPFS pour une meilleure performance.
 - **NestJS**: Construction de l'API backend pour gérer les requêtes des utilisateurs.
 
-## ⚠️ Note Importante
+## ⚠️ Remarque Importante
 
-Actuellement, Fairwave **n'est pas encore disponible pour un test public**. Des améliorations et des fonctionnalités supplémentaires sont en cours de développement. Restez à l'écoute pour les mises à jour !
+Actuellement, Fairwave **n'est pas encore disponible pour un test public**. Des améliorations et des fonctionnalités supplémentaires sont en cours de développement. Restez à l'écoute pour les mises à jour, car les fonctionnalités mentionnées seront publiées régulièrement.
 
 ---
-
-> **Veuillez noter** que le projet est encore en développement, et il n'est pas encore possible de le tester localement. Les fonctionnalités mentionnées sont en cours de développement, et des mises à jour seront publiées régulièrement.
