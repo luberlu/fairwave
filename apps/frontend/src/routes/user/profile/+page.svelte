@@ -2,8 +2,7 @@
 	import { onMount } from 'svelte';
 	import PassphraseInput from '../../../components/PassphraseInput.svelte';
 	import { did, username, role, artistName, status, encryptionKey } from '../../../lib/user/UserStore';
-	import { getUserProfileFromBackend } from '../../../lib/auth/Auth';
-	import { logout } from '../../../lib/user/UserActions';
+	import { logout, fetchUser } from '../../../lib/user/UserActions';
 	import { goto } from '$app/navigation';
 	import { get } from 'svelte/store';
 
@@ -11,7 +10,7 @@
 
 	// Charge le profil utilisateur après la validation de la passphrase
 	async function loadUserProfile() {
-		const userProfile = await getUserProfileFromBackend(get(did));
+		const userProfile = await fetchUser(get(did));
 
 		if (userProfile) {
 			isPassphraseValidated = true; // Affiche le profil
