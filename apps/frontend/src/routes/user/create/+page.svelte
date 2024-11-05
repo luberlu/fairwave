@@ -3,7 +3,7 @@
 	import PassphraseInput from '../../../components/PassphraseInput.svelte';
 	import { goto } from '$app/navigation';
 	import { initializeEncryptionKey } from '$lib/auth/EncryptionKey';
-	import { updateUserProfile } from '$lib/auth/Auth';
+	import { updateUser } from '$lib/user/UserActions';
 
 	let step = 1; // Indique l'étape actuelle (1 pour sélection de rôle, 2 pour informations de profil)
 	let role = ""; // Rôle choisi par l'utilisateur (Listener ou Artist)
@@ -35,7 +35,7 @@
 
 		try {
 			// Met à jour le profil utilisateur en passant les informations
-			await updateUserProfile({ role, username, artistName: role === "Artist" ? artistName : undefined });
+			await updateUser({ role, username, artistName: role === "Artist" ? artistName : undefined });
 			goto('/user/profile'); // Redirige vers le profil après mise à jour
 		} catch (error) {
 			console.error("Erreur lors de la mise à jour du profil utilisateur :", error);
