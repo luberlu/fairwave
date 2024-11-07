@@ -32,7 +32,7 @@ export async function updateUser(updates: any) {
     }
 
     try {
-        const response = await fetch(`/api/auth/update-profile/${encodeURIComponent(userDid)}`, {
+        const response = await fetch(`/api/user/update/${encodeURIComponent(userDid)}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(updates),
@@ -53,7 +53,7 @@ export async function updateUser(updates: any) {
 // Récupère le profil utilisateur depuis le backend en utilisant le DID
 export async function fetchUser(userDid: string) {
 	try {
-		const response = await fetch(`/api/auth/get-profile/${encodeURIComponent(userDid)}`);
+		const response = await fetch(`/api/user/get/${encodeURIComponent(userDid)}`);
 		const data = await response.json();
 		return data.success ? data.profile : null;
 	} catch (error) {
@@ -66,7 +66,7 @@ export async function fetchUser(userDid: string) {
 // Stocke un nouveau profil utilisateur dans le backend en utilisant le DID et la signature
 export async function saveUser(userDid: string, signature: string) {
 	try {
-		const response = await fetch(`/api/auth/store-profile`, {
+		const response = await fetch(`/api/user/store`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ did: userDid, signature }),

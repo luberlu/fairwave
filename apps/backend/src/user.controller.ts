@@ -1,27 +1,27 @@
 import { Controller, Post, Body, Get, Param, Put } from '@nestjs/common';
-import { DbService } from './db/db.service.js';
+import { UserService } from './user.service.js';
 
-@Controller('auth')
-export class AuthController {
-    constructor(private readonly gunDbService: DbService) {}
+@Controller('user')
+export class UserController {
+    constructor(private readonly userService: UserService) {}
 
-    @Post('store-profile')
-    async storeProfile(@Body() body: { did: string; signature: string }): Promise<any> {
+    @Post('store')
+    async store(@Body() body: { did: string; signature: string }): Promise<any> {
         const { did, signature } = body;
 
         try {
-            // On utilise le DID pour stocker le profil utilisateur
-            const profile = await this.gunDbService.storeUserProfile({ did, signature });
+            const profile = await this.userService.store({ did, signature });
             return { success: true, message: 'Profil utilisateur stocké avec succès', profile };
         } catch (error) {
             console.error('Erreur lors du stockage du profil utilisateur', error);
             return { success: false, error: 'Erreur lors du stockage du profil utilisateur' };
         }
     }
-    @Get('get-profile/:did')
-    async getProfile(@Param('did') did: string): Promise<any> {
+
+    @Get('get/:did')
+    async get(@Param('did') did: string): Promise<any> {
         try {
-            const profile = await this.gunDbService.getUserProfile(did);
+            const profile = await this.userService.get(did);
             return profile ? { success: true, profile } : { success: false, message: 'Profil non trouvé' };
         } catch (error) {
             console.error('Erreur lors de la récupération du profil utilisateur', error);
@@ -29,13 +29,13 @@ export class AuthController {
         }
     }
 
-    @Put('update-profile/:did')
-    async updateProfile(
+    @Put('update/:did')
+    async update(
         @Param('did') did: string,
         @Body() updates: { username?: string; artistName?: string; isArtist?: boolean }
     ): Promise<any> {
         try {
-            const updatedProfile = await this.gunDbService.updateUserProfile(did, updates);
+            const updatedProfile = await this.userService.update(did, updates);
             return { success: true, message: 'Profil utilisateur mis à jour avec succès', updatedProfile };
         } catch (error) {
             console.error('Erreur lors de la mise à jour du profil utilisateur', error);

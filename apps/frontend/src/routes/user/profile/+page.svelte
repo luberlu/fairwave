@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import PassphraseInput from '../../../components/PassphraseInput.svelte';
 	import { did, username, role, artistName, status, encryptionKey } from '../../../lib/user/UserStore';
 	import { logout, fetchUser } from '../../../lib/user/UserActions';
