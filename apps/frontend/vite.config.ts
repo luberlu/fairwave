@@ -1,5 +1,6 @@
 import { defineConfig } from 'vitest/config';
 import { sveltekit } from '@sveltejs/kit/vite';
+import { svelteTesting } from '@testing-library/svelte/vite';
 import { NodeGlobalsPolyfillPlugin } from '@esbuild-plugins/node-globals-polyfill';
 
 export default defineConfig({
@@ -14,6 +15,7 @@ export default defineConfig({
     },
     plugins: [
         sveltekit(),
+        svelteTesting(),
         NodeGlobalsPolyfillPlugin({
             buffer: true, // Polyfill pour `Buffer`
         }),
@@ -28,5 +30,9 @@ export default defineConfig({
     },
     optimizeDeps: {
         include: ['buffer'], // Assure l'inclusion de `buffer` dans les dépendances optimisées
+    },
+    test: {
+        environment: 'jsdom',
+        setupFiles: ['./vitest-setup.js'],
     },
 });
