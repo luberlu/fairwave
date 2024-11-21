@@ -1,28 +1,31 @@
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
 	import { initializeEncryptionKey } from '../lib/auth/EncryptionKey';
 	import { status } from '../lib/user/UserStore';
 	import CryptoJS from 'crypto-js';
 
-	export let passphrase = '';
-	export let isFirstTime = false; // Indique si c'est la première connexion de l'utilisateur
-	const dispatch = createEventDispatcher();
+	interface Props {
+		submit?: () => void,
+  		passphrase?: string,
+  		isFirstTime?: Boolean,
+	};
+
+	let { submit = () => {}, passphrase = '', isFirstTime = false } : Props = $props();
 
 	// Génère une nouvelle passphrase aléatoire pour l'utilisateur lors de la première connexion
 	async function generatePassphrase() {
 		passphrase = CryptoJS.lib.WordArray.random(16).toString();
 		await initializeEncryptionKey(passphrase);
 		status.set("Nouvelle clé de chiffrement générée avec succès !");
-		dispatch('submit'); // Envoie un événement 'submit' pour notifier le parent
+		submit();
 	}
 
 	// Soumet la passphrase existante pour la réauthentification
-	async function submitExistingPassphrase(event) {
+	async function submitExistingPassphrase(event: any) {
 		event.preventDefault(); // Empêche le rechargement de la page
 		if (passphrase) {
 			await initializeEncryptionKey(passphrase);
 			status.set("Clé de chiffrement validée avec succès !");
-			dispatch('submit'); // Envoie un événement 'submit' pour notifier le parent
+			submit();
 		} else {
 			status.set("Veuillez entrer une passphrase valide.");
 		}
@@ -46,7 +49,7 @@
 				placeholder="Passphrase générée"
 				readonly
 			/>
-			<button on:click={generatePassphrase} class="ml-4 rounded-md bg-yellow-500 p-2 px-4 text-white font-semibold">
+			<button onclick={generatePassphrase} class="ml-4 rounded-md bg-yellow-500 p-2 px-4 text-white font-semibold">
 				Générer une nouvelle clé
 			</button>
 		</div>
@@ -60,7 +63,7 @@
 			Pour accéder à vos données, veuillez entrer votre <span class="font-semibold">passphrase</span> déjà sauvegardée.
 			Assurez-vous qu'elle soit correcte, car elle est <span class="font-bold">indispensable</span> pour déchiffrer vos informations.
 		</p>
-		<form on:submit|preventDefault={submitExistingPassphrase} class="flex items-center mb-4">
+		<form onsubmit={submitExistingPassphrase} class="flex items-center mb-4">
 			<input
 				type="password"
 				bind:value={passphrase}

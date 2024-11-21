@@ -26,7 +26,7 @@
 			</nav>
 			{#if $isAuthenticated}
 				<UserInfos />
-				<button on:click={handleLogout} class="rounded-md bg-red-500 p-2 text-white">
+				<button onclick={handleLogout} class="rounded-md bg-red-500 p-2 text-white">
 					Log out
 				</button>
 			{:else}

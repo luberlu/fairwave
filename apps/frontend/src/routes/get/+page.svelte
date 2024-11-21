@@ -52,7 +52,7 @@
                 class="border p-3 rounded-md w-full mb-4" 
             />
             <button 
-                on:click={handleFetch} 
+                onclick={handleFetch} 
                 class="bg-blue-500 text-white p-3 rounded-md w-full font-semibold transition-all duration-300 ease-in-out hover:bg-blue-600 flex items-center justify-center"
             >
                 {#if fetchStatus === "Chargement de l'audio..."}

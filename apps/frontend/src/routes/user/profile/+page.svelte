@@ -34,7 +34,7 @@
 <main class="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-6">
 	{#if !isPassphraseValidated}
 		<!-- Affiche le composant PassphraseInput pour valider l'accès -->
-		<PassphraseInput isFirstTime={ false } on:submit={onPassphraseSubmit} />
+		<PassphraseInput isFirstTime={ false } submit={ onPassphraseSubmit } />
 	{:else}
 		<!-- Affichage du profil utilisateur une fois la passphrase validée -->
 		<div class="w-full max-w-xl bg-white rounded-lg shadow-md overflow-hidden">
@@ -60,10 +60,10 @@
 				{/if}
 				
 				<div class="flex justify-around mt-6 space-x-4">
-					<button on:click={handleLogout} class="flex-1 rounded-md bg-red-500 p-2 text-white font-semibold hover:bg-red-600 transition">
+					<button onclick={handleLogout} class="flex-1 rounded-md bg-red-500 p-2 text-white font-semibold hover:bg-red-600 transition">
 						Déconnexion
 					</button>
-					<button on:click={() => goto('/user/edit')} class="flex-1 rounded-md bg-green-500 p-2 text-white font-semibold hover:bg-green-600 transition">
+					<button onclick={() => goto('/user/edit')} class="flex-1 rounded-md bg-green-500 p-2 text-white font-semibold hover:bg-green-600 transition">
 						Modifier le profil
 					</button>
 				</div>

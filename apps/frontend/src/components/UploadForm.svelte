@@ -33,7 +33,7 @@
     <!-- Section Bouton Télécharger et statut -->
     <div class="text-center">
         <button
-            on:click={handleUpload}
+            onclick={handleUpload}
             class="bg-blue-500 text-white p-2 rounded-md w-full flex items-center justify-center space-x-2"
             disabled={isUploading}
         >

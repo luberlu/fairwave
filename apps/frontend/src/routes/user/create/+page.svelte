@@ -51,10 +51,10 @@
 		<!-- Étape 1 : Sélection du rôle de l'utilisateur -->
 		<h2 class="text-xl mb-4">Êtes-vous un artiste ou un listener ?</h2>
 		<div class="flex space-x-4">
-			<button on:click={() => handleRoleSelection('Listener')} class="rounded-md bg-blue-500 p-2 text-white">
+			<button onclick={() => handleRoleSelection('Listener')} class="rounded-md bg-blue-500 p-2 text-white">
 				Listener
 			</button>
-			<button on:click={() => handleRoleSelection('Artist')} class="rounded-md bg-green-500 p-2 text-white">
+			<button onclick={() => handleRoleSelection('Artist')} class="rounded-md bg-green-500 p-2 text-white">
 				Artiste
 			</button>
 		</div>
@@ -83,14 +83,14 @@
 						placeholder="Entrez votre nom d'artiste"
 					/>
 				</label>
-				<PassphraseInput isFirstTime bind:passphrase />
+				<PassphraseInput isFirstTime passphrase={ passphrase } />
 			{/if}
 
 			<div class="flex justify-between">
-				<button on:click={goBack} class="rounded-md bg-gray-500 p-2 text-white font-semibold">
+				<button onclick={goBack} class="rounded-md bg-gray-500 p-2 text-white font-semibold">
 					Retour
 				</button>
-				<button on:click={handleSubmit} class="rounded-md bg-green-500 p-2 text-white font-semibold">
+				<button onclick={handleSubmit} class="rounded-md bg-green-500 p-2 text-white font-semibold">
 					Valider
 				</button>
 			</div>
