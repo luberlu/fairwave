@@ -7,7 +7,7 @@
 	import { goto } from '$app/navigation';
 
 	// Déstructure les informations utilisateur
-	const { did, username, role, artistName } = $userProfile;
+	const { did, username, role, artistName } = userProfile.value;
 
 	// État de validation de la passphrase
 	let isPassphraseValidated = $authStore.encryptionKey ? true : false;

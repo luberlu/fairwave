@@ -26,7 +26,7 @@ export function logout(): void {
  * @returns Une promesse qui se résout une fois l'opération terminée.
  */
 export async function updateUser(updates: Partial<UserProfile>): Promise<void> {
-	const { did } = userProfile;
+	const { did } = userProfile.value;
 
 	if (!did) {
 		setStatus('Erreur : DID utilisateur non disponible.');

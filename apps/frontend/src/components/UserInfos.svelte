@@ -12,7 +12,7 @@
 	<p>
 		Hello, 
 		<button on:click={goToProfile} class="font-semibold text-white-500 underline cursor-pointer hover:text-yellow-400">
-			{userProfile.username}
+			{userProfile.value.username}
         </button>!
 	</p>
 </div>

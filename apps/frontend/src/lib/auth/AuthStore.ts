@@ -1,4 +1,4 @@
-import { localStorageWritable } from '../utils/localStorageWritable';
+import { localStorageWritable } from '../utils/localStorage.svelte';
 import type { Writable } from 'svelte/store';
 
 export interface AuthState {

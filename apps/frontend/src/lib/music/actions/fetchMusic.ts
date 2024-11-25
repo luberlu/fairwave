@@ -20,7 +20,7 @@ export async function fetchMusic(
 	}
 
 	const { encryptionKey } = get(authStore);
-	const { did } = get(userProfile);
+	const { did } = userProfile.value;
 
 	if (!encryptionKey) {
 		setStatus('Erreur : Clé de déchiffrement introuvable.');
@@ -73,7 +73,7 @@ export async function fetchMusic(
  * @returns Une liste de pistes ou une exception en cas d'erreur.
  */
 export async function fetchUserTracks(): Promise<any[]> {
-	const { did } = get(userProfile);
+	const { did } = userProfile.value;
 
 	if (!did) {
 		throw new Error('Erreur : Utilisateur non authentifié.');

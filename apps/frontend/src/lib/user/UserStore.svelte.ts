@@ -1,3 +1,5 @@
+import { persistedState } from '../utils/persistedState.svelte';
+
 export interface UserProfile {
 	did: string;
 	isArtist: boolean;
@@ -14,20 +16,25 @@ const defaultUserProfile: UserProfile = {
 	artistName: undefined,
 };
 
-// Déclarez le profil utilisateur en tant qu'état réactif
-export let userProfile = $state(defaultUserProfile);
+export const userProfile = persistedState('userProfile', defaultUserProfile, {
+	storage: 'local',
+	syncTabs: true,
+	onWriteError: (error: any) => console.error('Erreur lors de l’écriture:', error),
+	onParseError: (error: any) => console.error('Erreur lors du parsing:', error)
+});
+
 
 /**
  * Met à jour une ou plusieurs propriétés du profil utilisateur.
  * @param updates Les propriétés à mettre à jour.
  */
 export function setUserProfile(updates: Partial<UserProfile>): void {
-	Object.assign(userProfile, updates);
+	userProfile.value = { ...userProfile.value, ...updates };
 }
 
 /**
  * Réinitialise le profil utilisateur.
  */
 export function resetUserProfile(): void {
-	Object.assign(userProfile, defaultUserProfile);
+	userProfile.reset();
 }

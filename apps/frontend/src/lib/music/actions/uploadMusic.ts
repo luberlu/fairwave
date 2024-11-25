@@ -15,7 +15,7 @@ export async function uploadMusic(title: string, file: File | null): Promise<{ s
 		return { success: false, message: "Champs manquants" };
 	}
 
-	const { did } = get(userProfile);
+	const { did } = userProfile.value;
 	const { encryptionKey } = get(authStore);
 
 	if (!did) {
