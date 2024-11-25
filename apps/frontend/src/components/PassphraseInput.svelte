@@ -1,33 +1,37 @@
 <script lang="ts">
 	import { initializeEncryptionKey } from '../lib/auth/EncryptionKey';
-	import { status } from '../lib/user/UserStore';
+	import { setStatus } from '../lib/status/StatusStore';
 	import CryptoJS from 'crypto-js';
 
 	interface Props {
-		submit?: () => void,
-  		passphrase?: string,
-  		isFirstTime?: Boolean,
-	};
+		submit?: () => void;
+		passphrase?: string;
+		isFirstTime?: boolean;
+	}
 
-	let { submit = () => {}, passphrase = '', isFirstTime = false } : Props = $props();
+	let { submit = () => {}, passphrase = '', isFirstTime = false }: Props = $props();
 
-	// Génère une nouvelle passphrase aléatoire pour l'utilisateur lors de la première connexion
+	/**
+	 * Génère une nouvelle passphrase aléatoire pour l'utilisateur lors de la première connexion.
+	 */
 	async function generatePassphrase() {
 		passphrase = CryptoJS.lib.WordArray.random(16).toString();
 		await initializeEncryptionKey(passphrase);
-		status.set("Nouvelle clé de chiffrement générée avec succès !");
+		setStatus('Nouvelle clé de chiffrement générée avec succès !');
 		submit();
 	}
 
-	// Soumet la passphrase existante pour la réauthentification
-	async function submitExistingPassphrase(event: any) {
+	/**
+	 * Soumet la passphrase existante pour la réauthentification.
+	 */
+	async function submitExistingPassphrase(event: Event) {
 		event.preventDefault(); // Empêche le rechargement de la page
 		if (passphrase) {
 			await initializeEncryptionKey(passphrase);
-			status.set("Clé de chiffrement validée avec succès !");
+			setStatus('Clé de chiffrement validée avec succès !');
 			submit();
 		} else {
-			status.set("Veuillez entrer une passphrase valide.");
+			setStatus('Veuillez entrer une passphrase valide.');
 		}
 	}
 </script>

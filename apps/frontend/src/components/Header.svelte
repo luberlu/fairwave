@@ -1,16 +1,13 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { logout } from '../lib/user/UserActions';
-	import { status, isAuthenticated } from '../lib/user/UserStore';
+	import { statusStore } from '../lib/status/StatusStore';
+	import { authStore } from '$lib/auth/AuthStore';
 	import UserInfos from './UserInfos.svelte';
 
-	let showStatus = false;
-
-	// Méthode de déconnexion
 	function handleLogout() {
 		logout();
 		goto('/');
-		showStatus = true;
 	}
 </script>
 
@@ -24,7 +21,7 @@
 				<a href="/get" class="hover:underline">Play</a>
 				<a href="/list" class="hover:underline">List</a>
 			</nav>
-			{#if $isAuthenticated}
+			{#if $authStore.isAuthenticated}
 				<UserInfos />
 				<button onclick={handleLogout} class="rounded-md bg-red-500 p-2 text-white">
 					Log out
@@ -35,14 +32,9 @@
 		</div>
 	</div>
 
-	<!-- Affiche PassphraseInput seulement si l'utilisateur est authentifié sans clé de chiffrement
-	{#if $isAuthenticated && !$encryptionKey}
-		<PassphraseInput />
-	{/if}*/-->
-
-	{#if showStatus && $status}
+	{#if $statusStore.message}
 		<div class="mt-2 rounded-md bg-blue-500 p-2 text-center text-white">
-			{$status}
+			{$statusStore.message}
 		</div>
 	{/if}
 </header>

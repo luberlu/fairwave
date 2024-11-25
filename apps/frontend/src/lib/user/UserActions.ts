@@ -1,70 +1,89 @@
-// UserActions.ts
-import { did, username, role, artistName, status, isAuthenticated, encryptionKey } from './UserStore';
+import { userProfile, setUserProfile, resetUserProfile, type UserProfile } from './UserStore.svelte';
+import { setAuthState, resetAuthState } from '../auth/AuthStore';
+import { setStatus } from '../status/StatusStore';
 import { authenticate as authStoreAuthenticate } from '../auth/Auth';
-import { get } from 'svelte/store';
 import { initializeEncryptionKey } from '$lib/auth/EncryptionKey';
 
-// Authentifie l'utilisateur via MetaMask en utilisant la fonction existante d'authStore
-export async function authenticateUser() {
+/**
+ * Authentifie l'utilisateur via MetaMask en utilisant la fonction existante d'authStore.
+ */
+export async function authenticateUser(): Promise<void> {
 	await authStoreAuthenticate();
 }
 
-// Déconnecte l'utilisateur et réinitialise le store
-export function logout() {
-	isAuthenticated.set(false);
-	encryptionKey.set(null);
-	did.set('');
-	username.set('');
-	role.set('');
-	artistName.set('');
-
-	status.set('Déconnecté avec succès.');
-	displayStatusMessage();
+/**
+ * Déconnecte l'utilisateur et réinitialise les stores.
+ */
+export function logout(): void {
+	resetUserProfile();
+	resetAuthState();
+	setStatus('Déconnecté avec succès.');
 }
 
-// Met à jour le profil utilisateur dans le backend
-export async function updateUser(updates: any) {
-	const userDid = get(did);
+/**
+ * Met à jour le profil utilisateur dans le backend.
+ * @param updates Les données à mettre à jour.
+ * @returns Une promesse qui se résout une fois l'opération terminée.
+ */
+export async function updateUser(updates: Partial<UserProfile>): Promise<void> {
+	const { did } = userProfile;
 
-    if (!userDid) {
-        status.set("Erreur : DID utilisateur non disponible.");
-        return;
-    }
+	if (!did) {
+		setStatus('Erreur : DID utilisateur non disponible.');
+		return;
+	}
 
-    try {
-        const response = await fetch(`/api/user/update/${encodeURIComponent(userDid)}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(updates),
-        });
-        const data = await response.json();
+	try {
+		const response = await fetch(`/api/user/update/${encodeURIComponent(did)}`, {
+			method: 'PUT',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(updates),
+		});
+		const data = await response.json();
 
-        if (data.success) {
-            status.set("Profil utilisateur mis à jour avec succès !");
-        } else {
-            status.set(data.error || "Erreur lors de la mise à jour du profil utilisateur.");
-        }
-    } catch (error) {
-        console.error("Erreur lors de la mise à jour du profil utilisateur :", error);
-        status.set("Erreur lors de la mise à jour du profil utilisateur.");
-    }
+		if (data.success) {
+			setUserProfile(updates);
+			setStatus('Profil utilisateur mis à jour avec succès !');
+		} else {
+			setStatus(data.error || 'Erreur lors de la mise à jour du profil utilisateur.');
+		}
+	} catch (error) {
+		console.error('Erreur lors de la mise à jour du profil utilisateur :', error);
+		setStatus('Erreur lors de la mise à jour du profil utilisateur.');
+	}
 }
 
-// Récupère le profil utilisateur depuis le backend en utilisant le DID
-export async function fetchUser(userDid: string) {
+/**
+ * Récupère le profil utilisateur depuis le backend en utilisant le DID.
+ * @param userDid Le DID de l'utilisateur.
+ * @returns Une promesse contenant le profil utilisateur ou null en cas d'erreur.
+ */
+export async function fetchUser(userDid: string): Promise<any | null> {
 	try {
 		const response = await fetch(`/api/user/get/${encodeURIComponent(userDid)}`);
 		const data = await response.json();
-		return data.success ? data.profile : null;
+
+		if (data.success) {
+			setUserProfile(data.profile);
+			return data.profile;
+		}
+
+		setStatus(data.error || 'Erreur lors de la récupération du profil utilisateur.');
+		return null;
 	} catch (error) {
-		console.error("Erreur lors de la récupération du profil utilisateur :", error);
-		status.set("Erreur lors de la récupération du profil utilisateur.");
+		console.error('Erreur lors de la récupération du profil utilisateur :', error);
+		setStatus('Erreur lors de la récupération du profil utilisateur.');
 		return null;
 	}
 }
 
-// Stocke un nouveau profil utilisateur dans le backend en utilisant le DID et la signature
-export async function saveUser(userDid: string, signature: string) {
+/**
+ * Stocke un nouveau profil utilisateur dans le backend.
+ * @param userDid Le DID de l'utilisateur.
+ * @param signature La signature pour vérifier l'identité.
+ * @returns Une promesse qui se résout une fois l'opération terminée.
+ */
+export async function saveUser(userDid: string, signature: string): Promise<void> {
 	try {
 		const response = await fetch(`/api/user/store`, {
 			method: 'POST',
@@ -72,33 +91,27 @@ export async function saveUser(userDid: string, signature: string) {
 			body: JSON.stringify({ did: userDid, signature }),
 		});
 		const data = await response.json();
+
 		if (!data.success) {
-			throw new Error(data.error || "Erreur lors du stockage du profil utilisateur");
+			throw new Error(data.error || 'Erreur lors du stockage du profil utilisateur');
 		}
 	} catch (error) {
-		console.error("Erreur lors du stockage du profil utilisateur :", error);
-		status.set("Erreur lors du stockage du profil utilisateur.");
+		console.error('Erreur lors du stockage du profil utilisateur :', error);
+		setStatus('Erreur lors du stockage du profil utilisateur.');
 	}
 }
 
-// Configure la clé de chiffrement pour l'utilisateur
-export async function setEncryptionKey(passphrase: string) {
+/**
+ * Configure la clé de chiffrement pour l'utilisateur.
+ * @param passphrase La passphrase utilisée pour générer la clé.
+ * @returns Une promesse qui se résout une fois la clé générée.
+ */
+export async function setEncryptionKey(passphrase: string): Promise<void> {
 	if (passphrase) {
 		await initializeEncryptionKey(passphrase);
-		status.set("Clé de chiffrement générée avec succès !");
-		displayStatusMessage();
+		setAuthState({ encryptionKey: passphrase });
+		setStatus('Clé de chiffrement générée avec succès !');
 	} else {
-		status.set("Veuillez entrer une passphrase valide.");
-		displayStatusMessage();
+		setStatus('Veuillez entrer une passphrase valide.');
 	}
-}
-
-// Affiche un message de statut temporaire
-export function displayStatusMessage() {
-	status.update(value => {
-		setTimeout(() => {
-			status.set('');
-		}, 3000);
-		return value;
-	});
 }
