@@ -155,4 +155,22 @@ export class MusicController {
     const file = createReadStream(join(process.cwd(), 'music.mp3'));
     return new StreamableFile(file);
   }
+
+  /**
+   * Get all tracks stored in the GUN database.
+   */
+  @Get('all')
+  async getAllTracks() {
+    try {
+      const tracks = await this.musicService.getAllTracks(); // Appelle la méthode du MusicService
+      return { success: true, tracks };
+    } catch (error) {
+      console.error('Erreur lors de la récupération de tous les morceaux:', error);
+      throw new HttpException(
+        'Erreur lors de la récupération des morceaux',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+  
 }

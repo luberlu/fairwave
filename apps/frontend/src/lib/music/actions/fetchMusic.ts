@@ -4,6 +4,14 @@ import { setStatus } from '../../status/StatusStore';
 import { Music } from '../Music';
 import { get } from 'svelte/store';
 
+export interface MusicTrack {
+	cid: string;
+	title: string;
+	artistDid: string;
+	duration?: number;
+	timestamp?: string;
+}
+
 /**
  * Récupère et initialise un fichier audio en streaming.
  * @param cid - L'identifiant de contenu du fichier audio.
@@ -100,4 +108,22 @@ export async function fetchUserTracks(): Promise<any[]> {
 		console.error('Erreur :', error);
 		return [];
 	}
+}
+
+export async function fetchAllTracks(): Promise<{ success: boolean; tracks: MusicTrack[] }> {
+    try {
+        const response = await fetch(`/api/music/all`, {
+            method: 'GET',
+        });
+
+        if (!response.ok) {
+            throw new Error('Erreur lors de la récupération des morceaux');
+        }
+
+        const data = await response.json();
+        return { success: true, tracks: data.tracks };
+    } catch (error) {
+        console.error('Erreur lors de la récupération des morceaux:', error);
+        return { success: false, tracks: [] };
+    }
 }

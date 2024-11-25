@@ -1,7 +1,7 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { DbService } from '../db/db.service.js';
 
-interface MusicTrack {
+export interface MusicTrack {
   cid: string; // Content Identifier sur IPFS
   title: string; // Titre du morceau
   artistDid: string; // DID de l'utilisateur/artiste
@@ -105,6 +105,25 @@ export class MusicService implements OnModuleInit {
       this.gunInstance.map().once((data: MusicTrack) => {
         if (data && data.artistDid === artistDid) {
           tracks.push(data);
+        }
+      });
+
+      setTimeout(() => {
+        resolve(tracks);
+      }, 1000); // Timeout pour s'assurer que tous les morceaux sont récupérés
+    });
+  }
+
+  /**
+   * Récupère tous les morceaux stockés dans GUN.
+   * @returns Une liste contenant tous les morceaux.
+   */
+  async getAllTracks(): Promise<MusicTrack[]> {
+    return new Promise((resolve, reject) => {
+      const tracks: MusicTrack[] = [];
+      this.gunInstance.map().once((data: MusicTrack, cid: string) => {
+        if (data && cid) {
+          tracks.push({ ...data, cid }); // Ajoute le morceau avec son CID
         }
       });
 

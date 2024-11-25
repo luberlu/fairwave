@@ -17,9 +17,10 @@
 		<div class="flex items-center space-x-4">
 			<nav class="flex space-x-4">
 				<a href="/" class="hover:underline">Accueil</a>
+				<a href="/music" class="hover:underline">Music</a>
 				<a href="/upload" class="hover:underline">Upload</a>
 				<a href="/get" class="hover:underline">Play</a>
-				<a href="/list" class="hover:underline">List</a>
+				<a href="/list" class="hover:underline">My Music</a>
 			</nav>
 			{#if $authStore.isAuthenticated}
 				<UserInfos />
