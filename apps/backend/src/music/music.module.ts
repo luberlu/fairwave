@@ -4,9 +4,12 @@ import { UploadService } from './upload.service.js';
 import { StreamingService } from './streaming.service.js';
 import { BlockchainService } from './blockchain.service.js';
 import { StorageService } from './storage.service.js';
+import { MusicService } from './music.service.js';
+import { DbModule } from '../db/db.module.js';
 
 @Module({
   controllers: [MusicController],
-  providers: [StorageService, UploadService, StreamingService, BlockchainService],
+  providers: [MusicService, StorageService, UploadService, StreamingService, BlockchainService],
+  imports: [DbModule],
 })
 export class MusicModule {}

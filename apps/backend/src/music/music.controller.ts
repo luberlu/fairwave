@@ -16,6 +16,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { UploadService } from './upload.service.js';
+import { MusicService } from './music.service.js';
 import { StreamingService } from './streaming.service.js';
 import { BlockchainService } from './blockchain.service.js';
 import { createReadStream } from 'fs';
@@ -24,6 +25,7 @@ import { join } from 'path';
 @Controller('music')
 export class MusicController {
   constructor(
+    private readonly musicService: MusicService,
     private readonly uploadService: UploadService,
     private readonly streamingService: StreamingService,
     private readonly blockchainService: BlockchainService,
@@ -63,6 +65,15 @@ export class MusicController {
       // Step 3: Register track on the blockchain
       await this.blockchainService.registerTrack(body.userDid, result.manifestCID);
 
+      // Step 4: Save track metadata in GUN database
+      const trackData = {
+        cid: result.manifestCID,
+        title: body.title,
+        artistDid: body.userDid,
+        timestamp: new Date().toISOString(),
+      };
+      await this.musicService.store(trackData);
+
       return { success: true, title: body.title, cid: result.manifestCID };
     } catch (error) {
       console.error("Erreur lors de l'upload ou de l'enregistrement sur la blockchain:", error);
@@ -86,7 +97,7 @@ export class MusicController {
     if (!userDid) {
       return res.status(HttpStatus.UNAUTHORIZED).send('Utilisateur non authentifié');
     }
-    
+
     // Verify ownership on the blockchain
     const isOwner = await this.blockchainService.isTrackRegistered(userDid, cid);
 
