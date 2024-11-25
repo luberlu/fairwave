@@ -17,7 +17,7 @@ export class DbService implements OnModuleInit {
 
         this.gun = Gun({
             web: server,
-            file: join(__dirname, '..', '..', '..', '..', 'storage', 'tmp'),
+            file: join(__dirname, '..', '..', '..', '..', 'storage', 'db'),
         });
 
         server.listen(8765, () => {

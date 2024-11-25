@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { DbService } from './db/db.service.js';
+import { DbService } from '../db/db.service.js';
 
 interface UserProfile {
     did: string;

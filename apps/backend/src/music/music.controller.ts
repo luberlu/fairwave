@@ -13,16 +13,25 @@ import {
   StreamableFile,
   Header,
 } from '@nestjs/common';
-import { MusicService } from './music.service.js';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
+import { UploadService } from './upload.service.js';
+import { StreamingService } from './streaming.service.js';
+import { BlockchainService } from './blockchain.service.js';
 import { createReadStream } from 'fs';
 import { join } from 'path';
 
 @Controller('music')
 export class MusicController {
-  constructor(private readonly musicService: MusicService) {}
+  constructor(
+    private readonly uploadService: UploadService,
+    private readonly streamingService: StreamingService,
+    private readonly blockchainService: BlockchainService,
+  ) {}
 
+  /**
+   * Upload a music file, encrypt it, and register its metadata on the blockchain.
+   */
   @Post('upload')
   @UseInterceptors(FileInterceptor('file'))
   async uploadMusic(
@@ -34,15 +43,15 @@ export class MusicController {
     }
 
     try {
-      // Étape 1 : Effectuer l'upload sur IPFS pour obtenir le CID
-      const result = await this.musicService.uploadMusic(
+      // Step 1: Upload music to IPFS and get CID
+      const result = await this.uploadService.uploadMusic(
         body.title,
         body.secretKey,
         file.buffer,
       );
 
-      // Étape 2 : Vérifier si le CID est déjà enregistré sur la blockchain
-      const trackExists = await this.musicService.isTrackRegistered(
+      // Step 2: Check if track is already registered on the blockchain
+      const trackExists = await this.blockchainService.isTrackRegistered(
         body.userDid,
         result.manifestCID,
       );
@@ -51,11 +60,8 @@ export class MusicController {
         throw new HttpException('Track already exists.', HttpStatus.CONFLICT);
       }
 
-      // Étape 3 : Enregistrer le morceau sur la blockchain
-      await this.musicService.registerTrackOnBlockchain(
-        body.userDid,
-        result.manifestCID,
-      );
+      // Step 3: Register track on the blockchain
+      await this.blockchainService.registerTrack(body.userDid, result.manifestCID);
 
       return { success: true, title: body.title, cid: result.manifestCID };
     } catch (error) {
@@ -67,32 +73,32 @@ export class MusicController {
     }
   }
 
+  /**
+   * Stream music securely by decrypting chunks and verifying ownership.
+   */
   @Get('stream/:cid')
   async streamMusic(
     @Param('cid') cid: string,
-    @Headers('X-User-Did') userDid: string, // DID de l'utilisateur
+    @Headers('X-User-Did') userDid: string, // DID of the user
     @Headers('X-Encryption-Key') encryptionKey: string,
     @Res() res: Response,
   ) {
     if (!userDid) {
-      return res.status(401).send('Utilisateur non authentifié');
+      return res.status(HttpStatus.UNAUTHORIZED).send('Utilisateur non authentifié');
     }
-
-    // Vérifiez sur la blockchain si l'utilisateur est bien le propriétaire du morceau
-    const isOwner = await this.musicService.verifyOwnershipOnBlockchain(
-      cid,
-      userDid,
-    );
+    
+    // Verify ownership on the blockchain
+    const isOwner = await this.blockchainService.isTrackRegistered(userDid, cid);
 
     if (!isOwner) {
-      return res.status(403).send("Accès refusé : Vous n'êtes pas le propriétaire de ce fichier.");
+      return res.status(HttpStatus.FORBIDDEN).send("Vous n'êtes pas le propriétaire de ce fichier.");
     }
 
-    // Si la vérification est réussie, obtenez le flux de musique
-    const result = await this.musicService.getMusicStream(cid, encryptionKey);
+    // Get the music stream and metadata
+    const result = await this.streamingService.getMusicStream(cid, encryptionKey);
 
     if (!result || !result.stream || !result.metadata) {
-      res.status(500).send('Erreur lors de la récupération du fichier.');
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).send('Erreur lors de la récupération du fichier.');
       return;
     }
 
@@ -104,10 +110,13 @@ export class MusicController {
     stream.on('data', (chunk: any) => res.write(chunk));
     stream.on('end', () => res.end());
     stream.on('error', (err: any) => {
-      res.status(500).send(err);
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).send(err);
     });
   }
 
+  /**
+   * Get all tracks registered by a specific user.
+   */
   @Get('user-tracks')
   async getUserTracks(@Headers('X-User-Did') userDid: string) {
     if (!userDid) {
@@ -115,7 +124,7 @@ export class MusicController {
     }
 
     try {
-      const tracks = await this.musicService.getUserTracks(userDid);
+      const tracks = await this.blockchainService.getUserTracks(userDid);
       return { success: true, tracks };
     } catch (error) {
       console.error('Erreur lors de la récupération des morceaux:', error);
@@ -126,6 +135,9 @@ export class MusicController {
     }
   }
 
+  /**
+   * Example endpoint to test streaming a local file.
+   */
   @Get('test')
   @Header('Content-Type', 'audio/mpeg')
   getFile(): StreamableFile {
