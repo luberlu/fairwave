@@ -3,8 +3,21 @@
     import { fetchAllTracks, type MusicTrack } from '../../lib/music/actions/fetchMusic'; // Assurez-vous que cette fonction existe côté front
     import AudioPlayer from '../../components/AudioPlayer.svelte';
 
-    let tracks: MusicTrack[] = [];
+    let groupedTracks: Record<string, MusicTrack[]> = {};
     let statusMessage: string = 'Chargement des morceaux...';
+
+    /**
+     * Classe les morceaux par `artistDid`.
+     */
+    function groupByArtist(tracks: MusicTrack[]): Record<string, MusicTrack[]> {
+        return tracks.reduce((acc, track) => {
+            if (!acc[track.artistDid]) {
+                acc[track.artistDid] = [];
+            }
+            acc[track.artistDid].push(track);
+            return acc;
+        }, {} as Record<string, MusicTrack[]>);
+    }
 
     /**
      * Charge la liste de tous les morceaux.
@@ -13,8 +26,7 @@
         try {
             const result = await fetchAllTracks();
             if (result.success && result.tracks.length > 0) {
-                tracks = result.tracks;
-                console.log('tracks => ', tracks);
+                groupedTracks = groupByArtist(result.tracks);
                 statusMessage = ''; // Efface le message si des morceaux sont trouvés
             } else {
                 statusMessage = 'Aucun morceau trouvé.';
@@ -30,6 +42,26 @@
     });
 </script>
 
+<style>
+    .artist-section {
+        margin-bottom: 2rem;
+    }
+
+    .artist-title {
+        font-size: 1.25rem;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+    }
+
+    .track-item {
+        padding: 1rem;
+        border-radius: 0.375rem;
+        background-color: #f8fafc; /* Light gray */
+        border: 1px solid #e5e7eb; /* Gray border */
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); /* Subtle shadow */
+    }
+</style>
+
 <div class="p-6 bg-white rounded-lg shadow-md">
     <h2 class="text-2xl font-bold mb-4">Tous les morceaux</h2>
 
@@ -38,25 +70,33 @@
         <p class="text-sm text-gray-600 mb-4">{statusMessage}</p>
     {/if}
 
-    <!-- Affichage de la liste des morceaux -->
-    {#if tracks.length > 0}
-        <ul class="space-y-4">
-            {#each tracks as track}
-                <li class="border p-4 rounded-md bg-gray-50 shadow-sm">
-                    <div class="mb-2">
-                        <h3 class="text-lg font-semibold">{track.title}</h3>
-                        <p class="text-sm text-gray-500">Artiste DID: {track.artistDid}</p>
-                        {#if track.duration}
-                            <p class="text-sm text-gray-500">Durée: {Math.round(track.duration)} secondes</p>
-                        {/if}
-                        {#if track.timestamp}
-                            <p class="text-sm text-gray-500">Ajouté le: {new Date(track.timestamp).toLocaleString()}</p>
-                        {/if}
+    <!-- Affichage des morceaux classés par `artistDid` -->
+    {#if Object.keys(groupedTracks).length > 0}
+        <div>
+            {#each Object.entries(groupedTracks) as [artistDid, tracks]}
+                <div class="artist-section">
+                    <div class="artist-title text-blue-500">
+                        Artiste DID: {artistDid}
                     </div>
-                    <!-- Composant pour lire le morceau -->
-                    <!--<AudioPlayer cid={track.cid} />-->
-                </li>
+                    <ul class="space-y-4">
+                        {#each tracks as track}
+                            <li class="track-item">
+                                <div class="mb-2">
+                                    <h3 class="text-lg font-semibold">{track.title}</h3>
+                                    {#if track.duration}
+                                        <p class="text-sm text-gray-500">Durée: {Math.round(track.duration)} secondes</p>
+                                    {/if}
+                                    {#if track.timestamp}
+                                        <p class="text-sm text-gray-500">Ajouté le: {new Date(track.timestamp).toLocaleString()}</p>
+                                    {/if}
+                                </div>
+                                <!-- Composant pour lire le morceau -->
+                                <!--<AudioPlayer cid={track.cid} />-->
+                            </li>
+                        {/each}
+                    </ul>
+                </div>
             {/each}
-        </ul>
+        </div>
     {/if}
 </div>
