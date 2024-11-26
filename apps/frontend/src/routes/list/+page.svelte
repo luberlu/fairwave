@@ -2,12 +2,15 @@
     import { onMount } from 'svelte';
     import { fetchUserTracks } from '../../lib/music/actions/fetchMusic';
     import AudioPlayer from '../../components/AudioPlayer.svelte';
-	import { getEncryptionKey } from '$lib/auth/EncryptionKey';
+    import { getEncryptionKey } from '$lib/auth/EncryptionKey';
 
     let tracks: string[] = [];
     let statusMessage: string = 'Chargement des morceaux...';
     let encryptionKey: string | null = null;
 
+    /**
+     * Charge les morceaux de l'utilisateur et gère les erreurs.
+     */
     async function loadUserTracks() {
         try {
             const result = await fetchUserTracks();
@@ -44,13 +47,14 @@
 
     <!-- Affichage de la liste des morceaux -->
     {#if tracks.length > 0}
-        <ul class="space-y-2">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {#each tracks as track}
-                <li class="border p-2 rounded-md bg-gray-100">
-                    CID: {track}
+                <div class="border rounded-md p-4 bg-gray-100 shadow hover:shadow-lg transition duration-200">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-2">CID</h3>
+                    <p class="text-sm text-gray-600 mb-4 break-all">{track}</p>
                     <AudioPlayer cid={track} />
-                </li>
+                </div>
             {/each}
-        </ul>
+        </div>
     {/if}
 </div>

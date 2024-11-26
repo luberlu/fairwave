@@ -17,7 +17,7 @@
 
 		if (music?.status.success) {
 			// Mise à jour des informations audio en cas de succès
-			statusMessage = music.status.message;
+			statusMessage = '';
 			title = music.title;
 			isAudioReady = true; // Active l'affichage des informations audio
 		} else {
