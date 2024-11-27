@@ -2,11 +2,15 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { DbService } from '../db/db.service.js';
 
 export interface MusicTrack {
-  cid: string; // Content Identifier sur IPFS
-  title: string; // Titre du morceau
-  artistDid: string; // DID de l'utilisateur/artiste
-  duration?: number; // Durée du morceau
-  timestamp?: string; // Date d'ajout
+    cid: string; // Content Identifier sur IPFS
+    title: string; // Titre du morceau
+    artistDid: string; // DID de l'utilisateur/artiste
+    artist?: string; // Nom de l'artiste (métadonnée extraite du fichier)
+    album?: string; // Nom de l'album (métadonnée extraite du fichier)
+    genre?: string; // Genre musical (métadonnée extraite du fichier)
+    year?: number; // Année de publication (métadonnée extraite du fichier)
+    duration?: number; // Durée du morceau (métadonnée extraite du fichier)
+    timestamp?: string; // Date d'ajout
 }
 
 interface GunAck {

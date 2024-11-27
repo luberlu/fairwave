@@ -265,6 +265,9 @@ importers:
       gun:
         specifier: ^0.2020.1240
         version: 0.2020.1240
+      hls.js:
+        specifier: ^1.5.17
+        version: 1.5.17
       multicodec:
         specifier: ^3.2.1
         version: 3.2.1
@@ -6370,6 +6373,9 @@ packages:
   hexoid@2.0.0:
     resolution: {integrity: sha512-qlspKUK7IlSQv2o+5I7yhUd7TxlOG2Vr5LTa3ve2XSNVKAL/n/u/7KLvKmFNimomDIKvZFXWHv0T12mv7rT8Aw==}
     engines: {node: '>=8'}
+
+  hls.js@1.5.17:
+    resolution: {integrity: sha512-wA66nnYFvQa1o4DO/BFgLNRKnBTVXpNeldGRBJ2Y0SvFtdwvFKCbqa9zhHoZLoxHhZ+jYsj3aIBkWQQCPNOhMw==}
 
   hmac-drbg@1.0.1:
     resolution: {integrity: sha512-Tti3gMqLdZfhOQY1Mzf/AanLiqh1WTiJgEj26ZuYQ9fbkLomzGchCws4FyrSd4VkpBfiNhaE1On+lOz894jvXg==}
@@ -19446,6 +19452,8 @@ snapshots:
       hermes-estree: 0.24.0
 
   hexoid@2.0.0: {}
+
+  hls.js@1.5.17: {}
 
   hmac-drbg@1.0.1:
     dependencies:

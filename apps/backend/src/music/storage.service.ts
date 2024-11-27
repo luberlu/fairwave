@@ -29,6 +29,11 @@ export class StorageService {
     return cid.toString();
   }
 
+  async downloadFromIPFS(cid: string): Promise<AsyncIterable<Uint8Array>> {
+    const parsedCID = CID.parse(cid);
+    return this.fs.cat(parsedCID);
+  }
+
   /**
    * Récupère un fichier depuis IPFS à partir de son CID.
    * @param cid Le CID du fichier à récupérer.
