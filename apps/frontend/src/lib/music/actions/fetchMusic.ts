@@ -24,7 +24,7 @@ export async function fetchMusicMetadata(cid: string): Promise<MusicTrack | null
 		const { did } = userProfile.value;
 
 		// URL pour récupérer les métadonnées
-		const response = await fetch(`/api/music/${cid}/metadata`, {
+		const response = await fetch(`/api/music/metadata/${cid}`, {
 			headers: {
 				'X-User-Did': did
 			}
@@ -60,7 +60,7 @@ export async function fetchMusic(
 
 	try {
 		// Construire l'URL pour le manifeste HLS
-		const manifestUrl = `/api/music/hls/${cid}`;
+		const manifestUrl = `/api/music/stream/${cid}`;
 
 		// Vérifier si HLS est supporté nativement ou utiliser HLS.js
 		if (Hls.isSupported()) {

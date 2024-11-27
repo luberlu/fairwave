@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { fetchAllTracks, type MusicTrack } from '../../lib/music/actions/fetchMusic'; // Assurez-vous que cette fonction existe côté front
+	import AudioPlayer from '../../components/AudioPlayer.svelte';
 
     let groupedTracks: Record<string, MusicTrack[]> = {};
     let statusMessage: string = 'Chargement des morceaux...';
@@ -82,6 +83,7 @@
                             <li class="track-item">
                                 <div class="mb-2">
                                     <h3 class="text-lg font-semibold">{track.title}</h3>
+                                    <p class="text-lg font-semibold">{track.cid}</p>
                                     {#if track.duration}
                                         <p class="text-sm text-gray-500">Durée: {Math.round(track.duration)} secondes</p>
                                     {/if}
@@ -90,7 +92,7 @@
                                     {/if}
                                 </div>
                                 <!-- Composant pour lire le morceau -->
-                                <!--<AudioPlayer cid={track.cid} />-->
+                                <AudioPlayer cid={track.cid} />
                             </li>
                         {/each}
                     </ul>

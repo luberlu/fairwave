@@ -1,16 +1,16 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import { DbService } from '../db/db.service.js';
+import { DbService } from '../../db/db.service.js';
 
 export interface MusicTrack {
-    cid: string; // Content Identifier sur IPFS
-    title: string; // Titre du morceau
-    artistDid: string; // DID de l'utilisateur/artiste
-    artist?: string; // Nom de l'artiste (métadonnée extraite du fichier)
-    album?: string; // Nom de l'album (métadonnée extraite du fichier)
-    genre?: string; // Genre musical (métadonnée extraite du fichier)
-    year?: number; // Année de publication (métadonnée extraite du fichier)
-    duration?: number; // Durée du morceau (métadonnée extraite du fichier)
-    timestamp?: string; // Date d'ajout
+  cid: string; // Content Identifier sur IPFS
+  title: string; // Titre du morceau
+  artistDid: string; // DID de l'utilisateur/artiste
+  artist?: string; // Nom de l'artiste (métadonnée extraite du fichier)
+  album?: string; // Nom de l'album (métadonnée extraite du fichier)
+  genre?: string; // Genre musical (métadonnée extraite du fichier)
+  year?: number; // Année de publication (métadonnée extraite du fichier)
+  duration?: number; // Durée du morceau (métadonnée extraite du fichier)
+  timestamp?: string; // Date d'ajout
 }
 
 interface GunAck {
@@ -122,7 +122,7 @@ export class MusicService implements OnModuleInit {
    * Récupère tous les morceaux stockés dans GUN.
    * @returns Une liste contenant tous les morceaux.
    */
-  async getAllTracks(): Promise<MusicTrack[]> {
+  async getAll(): Promise<MusicTrack[]> {
     return new Promise((resolve, reject) => {
       const tracks: MusicTrack[] = [];
       this.gunInstance.map().once((data: MusicTrack, cid: string) => {

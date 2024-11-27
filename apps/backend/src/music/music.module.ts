@@ -1,25 +1,28 @@
 import { Module } from '@nestjs/common';
-import { MusicController } from './music.controller.js';
-import { UploadService } from './upload.service.js';
-import { StreamingService } from './streaming.service.js';
-import { BlockchainService } from './blockchain.service.js';
-import { StorageService } from './storage.service.js';
-import { MusicService } from './music.service.js';
+import { UploadController } from './controllers/upload.controller.js';
+import { StreamingController } from './controllers/streaming.controller.js';
+import { MetadataController } from './controllers/metadata.controller.js';
+import { MusicService } from './services/music.service.js';
+import { StreamingService } from './services/streaming.service.js';
+import { UploadService } from './services/upload.service.js';
+import { BlockchainService } from './services/blockchain.service.js';
+import { StorageService } from './services/storage.service.js';
+import { SecretKeyService } from './services/secretkey.service.js';
+import { EncryptionService } from './services/encryption.service.js';
 import { DbModule } from '../db/db.module.js';
-import { SecretKeyService } from './secretkey.service.js';
-import { EncryptionService } from './encryption.service.js';
+import { MusicController } from './controllers/music.controller.js';
 
 @Module({
-  controllers: [MusicController],
+  controllers: [MusicController, UploadController, StreamingController, MetadataController],
   providers: [
-    MusicService, 
-    StorageService, 
-    UploadService, 
-    StreamingService, 
+    MusicService,
+    StreamingService,
+    UploadService,
     BlockchainService,
+    StorageService,
     SecretKeyService,
-    EncryptionService
-],
+    EncryptionService,
+  ],
   imports: [DbModule],
 })
 export class MusicModule {}
