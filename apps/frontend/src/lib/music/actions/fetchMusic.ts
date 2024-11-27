@@ -1,20 +1,17 @@
 import Hls from 'hls.js';
 import { userProfile } from '../../user/UserStore.svelte';
-import { authStore } from '../../auth/AuthStore';
 import { setStatus } from '../../status/StatusStore';
-import { Music } from '../Music';
-import { get } from 'svelte/store';
 
 export interface MusicTrack {
-    cid: string; // Content Identifier sur IPFS
-    title: string; // Titre du morceau
-    artistDid: string; // DID de l'utilisateur/artiste
-    artist?: string; // Nom de l'artiste (métadonnée extraite du fichier)
-    album?: string; // Nom de l'album (métadonnée extraite du fichier)
-    genre?: string; // Genre musical (métadonnée extraite du fichier)
-    year?: number; // Année de publication (métadonnée extraite du fichier)
-    duration?: number; // Durée du morceau (métadonnée extraite du fichier)
-    timestamp?: string; // Date d'ajout
+	cid: string; // Content Identifier sur IPFS
+	title: string; // Titre du morceau
+	artistDid: string; // DID de l'utilisateur/artiste
+	artist?: string; // Nom de l'artiste (métadonnée extraite du fichier)
+	album?: string; // Nom de l'album (métadonnée extraite du fichier)
+	genre?: string; // Genre musical (métadonnée extraite du fichier)
+	year?: number; // Année de publication (métadonnée extraite du fichier)
+	duration?: number; // Durée du morceau (métadonnée extraite du fichier)
+	timestamp?: string; // Date d'ajout
 }
 
 /**
@@ -24,14 +21,13 @@ export interface MusicTrack {
  */
 export async function fetchMusicMetadata(cid: string): Promise<MusicTrack | null> {
 	try {
-
 		const { did } = userProfile.value;
 
 		// URL pour récupérer les métadonnées
-		const response = await fetch(`/api/music-hls/${cid}/metadata`, {
+		const response = await fetch(`/api/music/${cid}/metadata`, {
 			headers: {
-				'X-User-Did': did,
-			},
+				'X-User-Did': did
+			}
 		});
 
 		if (!response.ok) {
@@ -46,132 +42,68 @@ export async function fetchMusicMetadata(cid: string): Promise<MusicTrack | null
 	}
 }
 
-export async function fetchMusicHLS(
-	cid: string,
-	audioElement: HTMLAudioElement | null
-  ): Promise<void> {
-	if (!audioElement) {
-	  setStatus('Erreur : Élément audio introuvable.');
-	  return;
-	}
-  
-	const { did } = userProfile.value;
-  
-	if (!did) {
-	  setStatus('Erreur : Utilisateur non authentifié.');
-	  return;
-	}
-  
-	try {
-	  // Construire l'URL pour le manifeste HLS
-	  const manifestUrl = `/api/music-hls/hls/${cid}`;
-  
-	  // Vérifier si HLS est supporté nativement ou utiliser HLS.js
-	  if (Hls.isSupported()) {
-		const hls = new Hls();
-  
-		// Charger le manifeste HLS dans HLS.js
-		hls.loadSource(manifestUrl);
-  
-		// Attacher HLS.js à l'élément audio
-		hls.attachMedia(audioElement);
-  
-		// Écoute des erreurs
-		hls.on(Hls.Events.ERROR, (event, data) => {
-		  console.error('Erreur HLS.js :', data);
-		  setStatus(`Erreur HLS : ${data.details}`);
-		});
-  
-		// Écoute des événements de chargement
-		hls.on(Hls.Events.MANIFEST_PARSED, () => {
-		  setStatus(`Lecture de la musique : ${cid}`);
-		  audioElement.play().catch((error) => {
-			console.error('Erreur lors de la lecture audio :', error);
-			setStatus(`Erreur : Impossible de lire l'audio.`);
-		  });
-		});
-	  } else if (audioElement.canPlayType('application/vnd.apple.mpegurl')) {
-		// Pour les navigateurs comme Safari avec support HLS natif
-		audioElement.src = manifestUrl;
-		audioElement.addEventListener('loadedmetadata', () => {
-		  setStatus(`Lecture de la musique : ${cid}`);
-		  audioElement.play().catch((error) => {
-			console.error('Erreur lors de la lecture audio :', error);
-			setStatus(`Erreur : Impossible de lire l'audio.`);
-		  });
-		});
-	  } else {
-		setStatus("Erreur : HLS non pris en charge par ce navigateur.");
-	  }
-	} catch (error) {
-	  const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
-	  console.error('Erreur :', errorMessage);
-	  setStatus(`Erreur : ${errorMessage}`);
-	}
-  }
-
-/**
- * Récupère et initialise un fichier audio en streaming.
- * @param cid - L'identifiant de contenu du fichier audio.
- * @param audioElement - L'élément HTMLAudioElement pour le streaming.
- * @returns Une instance de Music ou null en cas d'erreur.
- */
 export async function fetchMusic(
 	cid: string,
 	audioElement: HTMLAudioElement | null
-): Promise<Music | null> {
+): Promise<void> {
 	if (!audioElement) {
 		setStatus('Erreur : Élément audio introuvable.');
-		return null;
+		return;
 	}
 
-	const { encryptionKey } = get(authStore);
 	const { did } = userProfile.value;
-
-	if (!encryptionKey) {
-		setStatus('Erreur : Clé de déchiffrement introuvable.');
-		return null;
-	}
 
 	if (!did) {
 		setStatus('Erreur : Utilisateur non authentifié.');
-		return null;
+		return;
 	}
 
-	const music = new Music(audioElement);
-
 	try {
-		// Requête pour récupérer le fichier audio en streaming
-		const response = await fetch(`/api/music/stream/${cid}`, {
-			headers: {
-				'X-Encryption-Key': encryptionKey,
-				'X-User-Did': did
-			}
-		});
+		// Construire l'URL pour le manifeste HLS
+		const manifestUrl = `/api/music/hls/${cid}`;
 
-		if (!response.ok) {
-			throw new Error(`Erreur HTTP : ${response.status} - ${await response.text()}`);
-		}
+		// Vérifier si HLS est supporté nativement ou utiliser HLS.js
+		if (Hls.isSupported()) {
+			const hls = new Hls();
 
-		// Extraction des métadonnées
-		music.duration = parseFloat(response.headers.get('X-Duration') || '0');
-		music.title = response.headers.get('X-Title');
+			// Charger le manifeste HLS dans HLS.js
+			hls.loadSource(manifestUrl);
 
-		// Initialisation du streaming audio
-		const reader = response.body?.getReader();
-		if (reader) {
-			music.initializeStreaming(reader);
+			// Attacher HLS.js à l'élément audio
+			hls.attachMedia(audioElement);
+
+			// Écoute des erreurs
+			hls.on(Hls.Events.ERROR, (event, data) => {
+				console.error('Erreur HLS.js :', data);
+				setStatus(`Erreur HLS : ${data.details}`);
+			});
+
+			// Écoute des événements de chargement
+			hls.on(Hls.Events.MANIFEST_PARSED, () => {
+				setStatus(`Lecture de la musique : ${cid}`);
+				audioElement.play().catch((error) => {
+					console.error('Erreur lors de la lecture audio :', error);
+					setStatus(`Erreur : Impossible de lire l'audio.`);
+				});
+			});
+		} else if (audioElement.canPlayType('application/vnd.apple.mpegurl')) {
+			// Pour les navigateurs comme Safari avec support HLS natif
+			audioElement.src = manifestUrl;
+			audioElement.addEventListener('loadedmetadata', () => {
+				setStatus(`Lecture de la musique : ${cid}`);
+				audioElement.play().catch((error) => {
+					console.error('Erreur lors de la lecture audio :', error);
+					setStatus(`Erreur : Impossible de lire l'audio.`);
+				});
+			});
 		} else {
-			throw new Error('Erreur : Lecture du flux audio impossible.');
+			setStatus('Erreur : HLS non pris en charge par ce navigateur.');
 		}
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+		console.error('Erreur :', errorMessage);
 		setStatus(`Erreur : ${errorMessage}`);
-		music.status.message = errorMessage;
-		music.status.success = false;
 	}
-
-	return music;
 }
 
 /**
@@ -209,19 +141,19 @@ export async function fetchUserTracks(): Promise<any[]> {
 }
 
 export async function fetchAllTracks(): Promise<{ success: boolean; tracks: MusicTrack[] }> {
-    try {
-        const response = await fetch(`/api/music/all`, {
-            method: 'GET',
-        });
+	try {
+		const response = await fetch(`/api/music/all`, {
+			method: 'GET'
+		});
 
-        if (!response.ok) {
-            throw new Error('Erreur lors de la récupération des morceaux');
-        }
+		if (!response.ok) {
+			throw new Error('Erreur lors de la récupération des morceaux');
+		}
 
-        const data = await response.json();
-        return { success: true, tracks: data.tracks };
-    } catch (error) {
-        console.error('Erreur lors de la récupération des morceaux:', error);
-        return { success: false, tracks: [] };
-    }
+		const data = await response.json();
+		return { success: true, tracks: data.tracks };
+	} catch (error) {
+		console.error('Erreur lors de la récupération des morceaux:', error);
+		return { success: false, tracks: [] };
+	}
 }

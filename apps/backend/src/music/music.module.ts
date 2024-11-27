@@ -6,21 +6,16 @@ import { BlockchainService } from './blockchain.service.js';
 import { StorageService } from './storage.service.js';
 import { MusicService } from './music.service.js';
 import { DbModule } from '../db/db.module.js';
-import { MusicHLSController } from './musicHLS.controller.js';
-import { UploadHLSService } from './uploadHLS.service.js';
-import { StreamingHLSService } from './streamingHLS.service.js';
 import { SecretKeyService } from './secretkey.service.js';
 import { EncryptionService } from './encryption.service.js';
 
 @Module({
-  controllers: [MusicController, MusicHLSController],
+  controllers: [MusicController],
   providers: [
     MusicService, 
     StorageService, 
     UploadService, 
-    UploadHLSService, 
     StreamingService, 
-    StreamingHLSService,
     BlockchainService,
     SecretKeyService,
     EncryptionService

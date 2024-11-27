@@ -1,42 +1,49 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
-	import { fetchMusic } from '../lib/music/actions/fetchMusic';
-	import { Music } from '../lib/music/Music'; // Importer la classe Music
+	import { fetchMusic, fetchMusicMetadata, type MusicTrack } from '$lib/music/actions/fetchMusic';
 
 	export let cid: string;
 
 	let audioElement: HTMLAudioElement | null = null;
 	let statusMessage = '';
-	let title: string | null = null;
-	let isAudioReady = false; // Contrôle l'affichage des informations audio
-	let music: Music | null = null; // Instance de Music
+	let musicMetadata: MusicTrack | null = null; // Variable pour stocker les métadonnées
+	let isAudioReady = false;
 
-	async function playAudio() {
+	async function initializeAudio() {
 		statusMessage = "Chargement de l'audio...";
-		music = await fetchMusic(cid, audioElement);
+		try {
+			// Récupérer les métadonnées
+			musicMetadata = await fetchMusicMetadata(cid);
 
-		if (music?.status.success) {
-			// Mise à jour des informations audio en cas de succès
+			if (!musicMetadata) {
+				throw new Error('Impossible de charger les métadonnées.');
+			}
+
+			// Initialiser HLS.js pour la lecture
+			await fetchMusic(cid, audioElement);
+
+			isAudioReady = true; // Active les contrôles et l'affichage
 			statusMessage = '';
-			title = music.title;
-			isAudioReady = true; // Active l'affichage des informations audio
-		} else {
-			statusMessage = music?.status.message || "Erreur lors du chargement de l'audio.";
+		} catch (error: any) {
+			statusMessage = `Erreur : ${error.message || 'Impossible de charger la musique.'}`;
+			isAudioReady = false;
 		}
 	}
 
 	onMount(() => {
 		if (audioElement) {
-			playAudio();
+			initializeAudio();
 		}
 	});
 
 	onDestroy(() => {
 		if (audioElement) {
-			URL.revokeObjectURL(audioElement.src);
+			audioElement.pause();
+			audioElement.src = '';
 		}
 	});
 </script>
+
 
 <div class="rounded-lg bg-white p-4 shadow-md">
 	<!-- Statut de chargement ou erreur -->
@@ -48,15 +55,34 @@
 	</audio>
 
 	<!-- Informations audio uniquement lorsque prêt -->
-	{#if isAudioReady && music?.status.success}
-		{#if title}
-			<h3 class="mt-4 text-lg font-semibold">Titre : {title}</h3>
+	{#if isAudioReady && musicMetadata}
+		<h3 class="mt-4 text-lg font-semibold">Titre : {musicMetadata.title}</h3>
+
+		{#if musicMetadata.artist}
+			<p class="text-sm text-gray-700">Artiste : {musicMetadata.artist}</p>
 		{/if}
 
-		{#if music.duration}
-			<p class="mb-2 text-sm text-gray-700">
-				Durée : {Math.floor(music.duration / 60)}:{(music.duration % 60).toFixed(0).padStart(2, '0')}
+		{#if musicMetadata.album}
+			<p class="text-sm text-gray-700">Album : {musicMetadata.album}</p>
+		{/if}
+
+		{#if musicMetadata.genre}
+			<p class="text-sm text-gray-700">Genre : {musicMetadata.genre}</p>
+		{/if}
+
+		{#if musicMetadata.year}
+			<p class="text-sm text-gray-700">Année : {musicMetadata.year}</p>
+		{/if}
+
+		{#if musicMetadata.duration}
+			<p class="text-sm text-gray-700">
+				Durée : {Math.floor(musicMetadata.duration / 60)}:{(musicMetadata.duration % 60).toFixed(0).padStart(2, '0')}
 			</p>
+		{/if}
+
+		{#if musicMetadata.timestamp}
+			<p class="text-sm text-gray-700">Ajouté le : {new Date(musicMetadata.timestamp).toLocaleString()}</p>
 		{/if}
 	{/if}
 </div>
+

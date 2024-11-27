@@ -1,5 +1,5 @@
 <script lang="ts">
-    import AudioPlayerHLS from '../../components/AudioPlayerHLS.svelte';
+    import AudioPlayer from './../../components/AudioPlayer.svelte';
 
     let cid = ''; // CID pour récupérer l'audio
     let fetchStatus = '';
@@ -70,7 +70,7 @@
 
         <!-- Affichage conditionnel du lecteur audio -->
         {#if isAudioLoaded}
-            <AudioPlayerHLS {cid} />
+            <AudioPlayer {cid} />
         {:else if !fetchStatus}
             <p class="text-sm text-gray-500">Veuillez entrer un CID et une clé de cryptage pour démarrer la lecture.</p>
         {/if}

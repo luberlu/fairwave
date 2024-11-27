@@ -1,7 +1,6 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { fetchAllTracks, type MusicTrack } from '../../lib/music/actions/fetchMusic'; // Assurez-vous que cette fonction existe côté front
-    import AudioPlayer from '../../components/AudioPlayer.svelte';
 
     let groupedTracks: Record<string, MusicTrack[]> = {};
     let statusMessage: string = 'Chargement des morceaux...';

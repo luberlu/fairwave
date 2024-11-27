@@ -6,77 +6,219 @@ import {
   HttpException,
   HttpStatus,
   Param,
+  Query,
   UseInterceptors,
   UploadedFile,
   Res,
-  Headers,
-  StreamableFile,
-  Header,
+  Headers
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
-import { UploadService } from './upload.service.js';
-import { MusicService } from './music.service.js';
-import { StreamingService } from './streaming.service.js';
+import { MusicService, MusicTrack } from './music.service.js';
 import { BlockchainService } from './blockchain.service.js';
-import { createReadStream } from 'fs';
-import { join } from 'path';
+import { StorageService } from './storage.service.js';
+import { UploadService } from './upload.service.js';
+import { parseBuffer } from 'music-metadata';
+import { SecretKeyService } from './secretkey.service.js';
+import { EncryptionService } from './encryption.service.js';
+import crypto from 'crypto';
+import { StreamingService } from './streaming.service.js';
 
 @Controller('music')
 export class MusicController {
   constructor(
+    private readonly storageService: StorageService,
     private readonly musicService: MusicService,
     private readonly uploadService: UploadService,
-    private readonly streamingService: StreamingService,
     private readonly blockchainService: BlockchainService,
+    private readonly secretKeyService: SecretKeyService,
+    private readonly encryptionService: EncryptionService,
+    private readonly streamingService: StreamingService
   ) {}
 
-  /**
-   * Upload a music file, encrypt it, and register its metadata on the blockchain.
-   */
+  @Get(':cid/metadata')
+  async getHLSMetadata(@Param('cid') cid: string): Promise<MusicTrack> {
+    // Cherchez les métadonnées dans la base de données ou un autre stockage
+    const metadata = await this.musicService.get(cid);
+
+    if (!metadata) {
+      throw new HttpException(
+        'Métadonnées introuvables pour ce CID',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    return metadata;
+  }
+
+  @Get('hls/:cid')
+  async streamHLS(
+    @Param('cid') cid: string,
+    @Headers('X-User-Did') userDid: string,
+    @Res() res: Response,
+  ) {
+    // Récupérez le manifeste depuis IPFS
+    const manifestStream = await this.storageService.downloadFromIPFS(cid);
+
+    const manifestBuffer = await this.streamingService.streamToBuffer(manifestStream);
+    const manifestContent = manifestBuffer.toString('utf-8');
+
+    // Ajouter `exp` et `hmac` aux URLs des segments
+    const updatedManifest = this.addSecurityToManifest(manifestContent);
+
+    res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+    res.send(updatedManifest);
+  }
+
+  @Get('hls/segment/:cid')
+  async streamHLSSegment(
+    @Param('cid') cid: string,
+    @Query('exp') exp: string,
+    @Query('hmac') hmac: string,
+    @Res() res: Response,
+  ) {
+    try {
+      // Valider le CID
+      if (!cid) {
+        throw new HttpException('CID manquant', HttpStatus.BAD_REQUEST);
+      }
+
+      const secretKey = this.secretKeyService.getSecretKey();
+      if (!secretKey) {
+        throw new HttpException(
+          'Clé secrète manquante',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+
+      // Vérifiez si l'URL est expirée
+      const currentTime = Math.floor(Date.now() / 1000);
+      if (currentTime > parseInt(exp, 10)) {
+        throw new HttpException('URL expirée', HttpStatus.FORBIDDEN);
+      }
+
+      // Valider la signature HMAC
+      const segmentPath = `/api/music/hls/segment/${cid}`;
+      const isValidHmac = this.validateHmac(
+        segmentPath,
+        parseInt(exp, 10),
+        hmac,
+        secretKey,
+      );
+      if (!isValidHmac) {
+        throw new HttpException('Signature invalide', HttpStatus.FORBIDDEN);
+      }
+
+      // Récupérer et décrypter le segment
+      const encryptedSegmentBuffer =
+        await this.storageService.downloadAsBufferFromIPFS(cid);
+      if (!encryptedSegmentBuffer) {
+        throw new HttpException(
+          `Segment introuvable pour le CID : ${cid}`,
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      const decryptedSegment = this.encryptionService.decryptData(
+        encryptedSegmentBuffer,
+        secretKey,
+      );
+
+      // Envoyer le segment déchiffré
+      res.setHeader('Content-Type', 'video/mp2t');
+      res.send(decryptedSegment);
+    } catch (error) {
+      console.error('Erreur lors du streaming du segment HLS :', error);
+
+      if (!res.headersSent) {
+        res
+          .status(HttpStatus.INTERNAL_SERVER_ERROR)
+          .send('Erreur lors de la récupération du segment HLS.');
+      }
+    }
+  }
+
   @Post('upload')
   @UseInterceptors(FileInterceptor('file'))
   async uploadMusic(
-    @Body() body: { title: string; secretKey: string; userDid: string },
+    @Body() body: { title: string; userDid: string },
     @UploadedFile() file: Express.Multer.File,
   ) {
     if (!body.userDid) {
-      throw new HttpException('Utilisateur non authentifié', HttpStatus.UNAUTHORIZED);
+      throw new HttpException(
+        'Utilisateur non authentifié',
+        HttpStatus.UNAUTHORIZED,
+      );
     }
 
     try {
-      // Step 1: Upload music to IPFS and get CID
-      const result = await this.uploadService.uploadMusic(
-        body.title,
-        body.secretKey,
-        file.buffer,
+      // Récupérer la clé secrète depuis SecretKeyService
+      const secretKey = this.secretKeyService.getSecretKey();
+
+      // Extraire les métadonnées audio
+      const metadata = await parseBuffer(file.buffer);
+      const audioMetadata = {
+        title: metadata.common.title || body.title || 'Titre inconnu',
+        artist: metadata.common.artist || 'Artiste inconnu',
+        album: metadata.common.album || 'Album inconnu',
+        duration: metadata.format.duration || 0,
+      };
+
+      console.log('Méta-données audio extraites:', audioMetadata);
+
+      const cleanedBuffer = await this.uploadService.preprocessMP3(file.buffer);
+
+      // Étape 1 : Générer les segments et le manifest
+      const { segments, manifest } =
+        await this.uploadService.generateHLS(cleanedBuffer);
+
+      // Étape 2 : Encrypter les segments avec la clé générique
+      const encryptedSegments = segments.map((segment) =>
+        this.encryptionService.encryptData(segment, secretKey),
       );
 
-      // Step 2: Check if track is already registered on the blockchain
+      // Étape 3 : Upload segments et manifest sur IPFS
+      const { manifestCID, segmentCIDs } =
+        await this.uploadService.uploadHLSFilesToIPFS(
+          encryptedSegments,
+          manifest,
+        );
+
+      console.log('Segments chiffrés:', segmentCIDs);
+      console.log('Manifest CID:', manifestCID);
+
+      // Étape 4 : Vérifiez si la piste est déjà enregistrée sur la blockchain
       const trackExists = await this.blockchainService.isTrackRegistered(
         body.userDid,
-        result.manifestCID,
+        manifestCID,
       );
 
       if (trackExists) {
         throw new HttpException('Track already exists.', HttpStatus.CONFLICT);
       }
 
-      // Step 3: Register track on the blockchain
-      await this.blockchainService.registerTrack(body.userDid, result.manifestCID);
+      // Étape 5 : Enregistrer la piste sur la blockchain
+      await this.blockchainService.registerTrack(body.userDid, manifestCID);
 
-      // Step 4: Save track metadata in GUN database
+      // Étape 6 : Sauvegarder les métadonnées dans la base de données
       const trackData = {
-        cid: result.manifestCID,
-        title: body.title,
+        cid: manifestCID,
+        title: audioMetadata.title,
+        artist: audioMetadata.artist,
+        album: audioMetadata.album,
+        duration: audioMetadata.duration,
         artistDid: body.userDid,
         timestamp: new Date().toISOString(),
       };
+
       await this.musicService.store(trackData);
 
-      return { success: true, title: body.title, cid: result.manifestCID };
+      return { success: true, title: audioMetadata.title, cid: manifestCID };
     } catch (error) {
-      console.error("Erreur lors de l'upload ou de l'enregistrement sur la blockchain:", error);
+      console.error(
+        "Erreur lors de l'upload ou de l'enregistrement sur la blockchain:",
+        error,
+      );
       return {
         success: false,
         message: "Erreur lors de l'enregistrement sur la blockchain",
@@ -85,53 +227,15 @@ export class MusicController {
   }
 
   /**
-   * Stream music securely by decrypting chunks and verifying ownership.
-   */
-  @Get('stream/:cid')
-  async streamMusic(
-    @Param('cid') cid: string,
-    @Headers('X-User-Did') userDid: string, // DID of the user
-    @Headers('X-Encryption-Key') encryptionKey: string,
-    @Res() res: Response,
-  ) {
-    if (!userDid) {
-      return res.status(HttpStatus.UNAUTHORIZED).send('Utilisateur non authentifié');
-    }
-
-    // Verify ownership on the blockchain
-    const isOwner = await this.blockchainService.isTrackRegistered(userDid, cid);
-
-    if (!isOwner) {
-      return res.status(HttpStatus.FORBIDDEN).send("Vous n'êtes pas le propriétaire de ce fichier.");
-    }
-
-    // Get the music stream and metadata
-    const result = await this.streamingService.getMusicStream(cid, encryptionKey);
-
-    if (!result || !result.stream || !result.metadata) {
-      res.status(HttpStatus.INTERNAL_SERVER_ERROR).send('Erreur lors de la récupération du fichier.');
-      return;
-    }
-
-    const { stream, metadata } = result;
-    res.setHeader('Content-Type', 'audio/mpeg');
-    res.setHeader('X-Title', metadata.title);
-    res.setHeader('X-Duration', metadata.duration.toString());
-
-    stream.on('data', (chunk: any) => res.write(chunk));
-    stream.on('end', () => res.end());
-    stream.on('error', (err: any) => {
-      res.status(HttpStatus.INTERNAL_SERVER_ERROR).send(err);
-    });
-  }
-
-  /**
    * Get all tracks registered by a specific user.
    */
   @Get('user-tracks')
   async getUserTracks(@Headers('X-User-Did') userDid: string) {
     if (!userDid) {
-      throw new HttpException('DID de l’utilisateur manquant', HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        'DID de l’utilisateur manquant',
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     try {
@@ -147,16 +251,6 @@ export class MusicController {
   }
 
   /**
-   * Example endpoint to test streaming a local file.
-   */
-  @Get('test')
-  @Header('Content-Type', 'audio/mpeg')
-  getFile(): StreamableFile {
-    const file = createReadStream(join(process.cwd(), 'music.mp3'));
-    return new StreamableFile(file);
-  }
-
-  /**
    * Get all tracks stored in the GUN database.
    */
   @Get('all')
@@ -165,12 +259,60 @@ export class MusicController {
       const tracks = await this.musicService.getAllTracks(); // Appelle la méthode du MusicService
       return { success: true, tracks };
     } catch (error) {
-      console.error('Erreur lors de la récupération de tous les morceaux:', error);
+      console.error(
+        'Erreur lors de la récupération de tous les morceaux:',
+        error,
+      );
       throw new HttpException(
         'Erreur lors de la récupération des morceaux',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
-  
+
+  /**
+   * Ajoute des paramètres `exp` et `hmac` aux URLs des segments dans le manifeste HLS.
+   */
+  private addSecurityToManifest(manifest: string): string {
+    const lines = manifest.split('\n');
+    const secretKey = this.secretKeyService.getSecretKey();
+    const expiration = Math.floor(Date.now() / 1000) + 60 * 60; // 1 heure de validité
+
+    return lines
+      .map((line) => {
+        if (line.startsWith('/api/music/hls/segment/')) {
+          const hmac = this.generateHmac(line, expiration, secretKey);
+          return `${line}?exp=${expiration}&hmac=${hmac}`;
+        }
+        return line;
+      })
+      .join('\n');
+  }
+
+  /**
+   * Génère un HMAC signé pour un segment.
+   */
+  private generateHmac(
+    path: string,
+    expiration: number,
+    secretKey: string,
+  ): string {
+    return crypto
+      .createHmac('sha256', secretKey)
+      .update(`${path}:${expiration}`)
+      .digest('hex');
+  }
+
+  /**
+   * Vérifie un HMAC signé pour un segment.
+   */
+  private validateHmac(
+    path: string,
+    expiration: number,
+    providedHmac: string,
+    secretKey: string,
+  ): boolean {
+    const expectedHmac = this.generateHmac(path, expiration, secretKey);
+    return expectedHmac === providedHmac;
+  }
 }

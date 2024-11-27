@@ -89,7 +89,7 @@ export async function uploadMusic(title: string, file: File | null): Promise<{ s
 	formData.append('userDid', did);
 
 	try {
-		const response = await fetch('/api/music-hls/upload', {
+		const response = await fetch('/api/music/upload', {
 			method: 'POST',
 			body: formData,
 		});
