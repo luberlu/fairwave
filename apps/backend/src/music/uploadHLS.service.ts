@@ -77,10 +77,18 @@ export class UploadHLSService {
   
       // Lire les fichiers HLS
       const files = await fs.readdir(outputDir);
-      const sortedFiles = files.filter((file) => file.endsWith('.ts')).sort();
+
+       // Trier les fichiers `.ts` par ordre alphabétique
+       const sortedSegmentFiles = files
+       .filter((file) => file.endsWith('.ts'))
+       .sort((a, b) => {
+         const aNumber = parseInt(a.match(/\d+/)?.[0] || '0', 10);
+         const bNumber = parseInt(b.match(/\d+/)?.[0] || '0', 10);
+         return aNumber - bNumber;
+       });
 
       const segmentBuffers = await Promise.all(
-        sortedFiles
+        sortedSegmentFiles
           .filter((file) => file.endsWith('.ts'))
           .map((file) => fs.readFile(path.join(outputDir, file)))
       );
