@@ -34,6 +34,15 @@ export class StorageService {
     return this.fs.cat(parsedCID);
   }
 
+  async downloadAsBufferFromIPFS(cid: string): Promise<Buffer> {
+    const stream = await this.downloadFromIPFS(cid);
+    const chunks: Uint8Array[] = [];
+    for await (const chunk of stream) {
+      chunks.push(chunk);
+    }
+    return Buffer.concat(chunks);
+  }
+
   /**
    * Récupère un fichier depuis IPFS à partir de son CID.
    * @param cid Le CID du fichier à récupérer.

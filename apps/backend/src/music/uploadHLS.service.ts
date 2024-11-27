@@ -25,7 +25,8 @@ export class UploadHLSService {
     await fs.writeFile(tempInputPath, fileBuffer);
   
     // Commande pour extraire uniquement l'audio et supprimer les métadonnées inutiles
-    const command = `ffmpeg -i ${tempInputPath} -map 0:a -c:a libmp3lame -q:a 2 -map_metadata -1 ${tempOutputPath}`;
+    const command = `ffmpeg -i ${tempInputPath} -map 0:a -c:a libmp3lame -q:a 2 -write_xing 0 -map_metadata -1 ${tempOutputPath}`;
+
     await new Promise<void>((resolve, reject) => {
       exec(command, (error, stdout, stderr) => {
         if (error) {
@@ -76,8 +77,10 @@ export class UploadHLSService {
   
       // Lire les fichiers HLS
       const files = await fs.readdir(outputDir);
+      const sortedFiles = files.filter((file) => file.endsWith('.ts')).sort();
+
       const segmentBuffers = await Promise.all(
-        files
+        sortedFiles
           .filter((file) => file.endsWith('.ts'))
           .map((file) => fs.readFile(path.join(outputDir, file)))
       );
@@ -121,6 +124,8 @@ rewriteHLSManifestWithRelativePath(
 ): string {
   const lines = manifest.split('\n');
   let segmentIndex = 0;
+
+  console.log('lines => ', lines);
 
   return lines
     .map((line) => {

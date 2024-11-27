@@ -82,9 +82,55 @@ export class MusicHLSController {
     res.send(manifestBuffer);
   }
 
+  @Get('hls/segment/:cid')
+async streamHLSSegment(
+  @Param('cid') cid: string,
+  @Res() res: Response,
+) {
+  try {
+    // Validation du CID
+    if (!cid) {
+      throw new HttpException('CID manquant', HttpStatus.BAD_REQUEST);
+    }
+
+    // Récupérer le segment chiffré depuis IPFS
+    const encryptedSegmentBuffer = await this.storageService.downloadAsBufferFromIPFS(cid);
+
+    if (!encryptedSegmentBuffer) {
+      throw new HttpException(
+        `Segment introuvable pour le CID : ${cid}`,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    // Déchiffrer le segment
+    const secretKey = this.secretKeyService.getSecretKey();
+    if (!secretKey) {
+      throw new HttpException(
+        'Clé secrète manquante',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+
+    const decryptedSegment = this.encryptionService.decryptData(encryptedSegmentBuffer, secretKey);
+
+    // Définir le type MIME et envoyer les données déchiffrées
+    res.setHeader('Content-Type', 'video/mp2t'); // MIME type pour segments HLS
+    res.send(decryptedSegment);
+  } catch (error) {
+    console.error('Erreur lors du streaming du segment HLS :', error);
+
+    if (!res.headersSent) {
+      res
+        .status(HttpStatus.INTERNAL_SERVER_ERROR)
+        .send("Erreur lors de la récupération du segment HLS.");
+    }
+  }
+}
+
   
   @Get('hls/segment/:cid')
-  async streamHLSSegment(
+  async streamHLSSegmentOld(
     @Param('cid') cid: string,
     @Res() res: Response,
   ) {
