@@ -152,9 +152,7 @@ async uploadMusic(
     // Étape 1 : Générer les segments et le manifest
     const { segments, manifest } = await this.uploadService.generateHLS(cleanedBuffer);
 
-      console.log('segments before upload => ', segments);
-
-    console.log('segments => ', segments);
+    console.log('segments before upload => ', segments);
 
     // Étape 2 : Encrypter les segments avec la clé générique
     const encryptedSegments = segments.map((segment) =>
