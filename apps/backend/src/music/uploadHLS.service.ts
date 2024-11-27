@@ -12,7 +12,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 @Injectable()
 export class UploadHLSService {
-  constructor(private readonly storageService: StorageService) {}
+
+  constructor(
+    private readonly storageService: StorageService
+  ) {}
 
   async generateHLS(fileBuffer: Buffer): Promise<{ segments: Buffer[], manifest: Buffer }> {
     const tempDir = path.join(process.cwd(), 'temp', `hls-${Date.now()}`); // Utilisation de process.cwd()

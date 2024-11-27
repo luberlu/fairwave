@@ -27,6 +27,8 @@ import { UploadHLSService } from './uploadHLS.service.js';
 import { pipeline } from 'stream';
   import { promisify } from 'util';
   import { parseBuffer } from 'music-metadata';
+import { SecretKeyService } from './secretkey.service.js';
+import { EncryptionService } from './encryption.service.js';
 
 @Controller('music-hls')
 export class MusicHLSController {
@@ -36,6 +38,8 @@ export class MusicHLSController {
     private readonly uploadService: UploadHLSService,
     private readonly streamingService: StreamingHLSService,
     private readonly blockchainService: BlockchainService,
+    private readonly secretKeyService: SecretKeyService,
+    private readonly encryptionService: EncryptionService,
   ) {}
 
   @Get(':cid/metadata')
@@ -119,74 +123,87 @@ export class MusicHLSController {
   
 
   @Post('upload')
-  @UseInterceptors(FileInterceptor('file'))
-  async uploadMusic(
-    @Body() body: { title: string; userDid: string },
-    @UploadedFile() file: Express.Multer.File,
-  ) {
-    if (!body.userDid) {
-      throw new HttpException('Utilisateur non authentifié', HttpStatus.UNAUTHORIZED);
-    }
-
-    try {
-      const metadata = await parseBuffer(file.buffer);
-
-      const audioMetadata = {
-        title: metadata.common.title || body.title || 'Titre inconnu',
-        artist: metadata.common.artist || 'Artiste inconnu',
-        album: metadata.common.album || 'Album inconnu',
-        duration: metadata.format.duration || 0,
-      };
-
-      console.log('Méta-données audio extraites:', audioMetadata);
-      
-      // Étape 1 : Générer les segments et le manifest
-      const { segments, manifest } = await this.uploadService.generateHLS(file.buffer);
-
-      // Étape 2 : Upload segments et manifest sur IPFS
-      const { manifestCID, segmentCIDs } = await this.uploadService.uploadHLSFilesToIPFS(
-        segments,
-        manifest,
-      );
-
-      console.log('Segments:', segmentCIDs);
-      console.log('Manifest CID:', manifestCID);
-
-      // Étape 3 : Vérifiez si la piste est déjà enregistrée sur la blockchain
-      const trackExists = await this.blockchainService.isTrackRegistered(
-        body.userDid,
-        manifestCID,
-      );
-
-      if (trackExists) {
-        throw new HttpException('Track already exists.', HttpStatus.CONFLICT);
-      }
-
-      // Étape 4 : Enregistrer la piste sur la blockchain
-      await this.blockchainService.registerTrack(body.userDid, manifestCID);
-
-
-      const trackData = {
-        cid: manifestCID,
-        title: audioMetadata.title,
-        artist: audioMetadata.artist,
-        album: audioMetadata.album,
-        duration: audioMetadata.duration,
-        artistDid: body.userDid,
-        timestamp: new Date().toISOString(),
-      };
-
-      await this.musicService.store(trackData);
-
-      return { success: true, title: body.title, cid: manifestCID };
-    } catch (error) {
-      console.error("Erreur lors de l'upload ou de l'enregistrement sur la blockchain:", error);
-      return {
-        success: false,
-        message: "Erreur lors de l'enregistrement sur la blockchain",
-      };
-    }
+@UseInterceptors(FileInterceptor('file'))
+async uploadMusic(
+  @Body() body: { title: string; userDid: string },
+  @UploadedFile() file: Express.Multer.File,
+) {
+  if (!body.userDid) {
+    throw new HttpException('Utilisateur non authentifié', HttpStatus.UNAUTHORIZED);
   }
+
+  try {
+    // Récupérer la clé secrète depuis SecretKeyService
+    const secretKey = this.secretKeyService.getSecretKey();
+
+    // Extraire les métadonnées audio
+    const metadata = await parseBuffer(file.buffer);
+    const audioMetadata = {
+      title: metadata.common.title || body.title || 'Titre inconnu',
+      artist: metadata.common.artist || 'Artiste inconnu',
+      album: metadata.common.album || 'Album inconnu',
+      duration: metadata.format.duration || 0,
+    };
+
+    console.log('Méta-données audio extraites:', audioMetadata);
+
+    // Étape 1 : Générer les segments et le manifest
+    const { segments, manifest } = await this.uploadService.generateHLS(file.buffer);
+
+    console.log('segments => ', segments);
+
+    // Étape 2 : Encrypter les segments avec la clé générique
+    const encryptedSegments = segments.map((segment) =>
+      this.encryptionService.encryptData(segment, secretKey),
+    );
+
+    console.log('encrypSeg', encryptedSegments);
+
+    // Étape 3 : Upload segments et manifest sur IPFS
+    const { manifestCID, segmentCIDs } = await this.uploadService.uploadHLSFilesToIPFS(
+      encryptedSegments,
+      manifest,
+    );
+
+    console.log('Segments chiffrés:', segmentCIDs);
+    console.log('Manifest CID:', manifestCID);
+
+    // Étape 4 : Vérifiez si la piste est déjà enregistrée sur la blockchain
+    const trackExists = await this.blockchainService.isTrackRegistered(
+      body.userDid,
+      manifestCID,
+    );
+
+    if (trackExists) {
+      throw new HttpException('Track already exists.', HttpStatus.CONFLICT);
+    }
+
+    // Étape 5 : Enregistrer la piste sur la blockchain
+    await this.blockchainService.registerTrack(body.userDid, manifestCID);
+
+    // Étape 6 : Sauvegarder les métadonnées dans la base de données
+    const trackData = {
+      cid: manifestCID,
+      title: audioMetadata.title,
+      artist: audioMetadata.artist,
+      album: audioMetadata.album,
+      duration: audioMetadata.duration,
+      artistDid: body.userDid,
+      timestamp: new Date().toISOString(),
+    };
+
+    await this.musicService.store(trackData);
+
+    return { success: true, title: audioMetadata.title, cid: manifestCID };
+  } catch (error) {
+    console.error("Erreur lors de l'upload ou de l'enregistrement sur la blockchain:", error);
+    return {
+      success: false,
+      message: "Erreur lors de l'enregistrement sur la blockchain",
+    };
+  }
+}
+
 
   /**
    * Get all tracks registered by a specific user.

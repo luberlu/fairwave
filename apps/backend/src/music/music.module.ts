@@ -9,6 +9,8 @@ import { DbModule } from '../db/db.module.js';
 import { MusicHLSController } from './musicHLS.controller.js';
 import { UploadHLSService } from './uploadHLS.service.js';
 import { StreamingHLSService } from './streamingHLS.service.js';
+import { SecretKeyService } from './secretkey.service.js';
+import { EncryptionService } from './encryption.service.js';
 
 @Module({
   controllers: [MusicController, MusicHLSController],
@@ -19,7 +21,9 @@ import { StreamingHLSService } from './streamingHLS.service.js';
     UploadHLSService, 
     StreamingService, 
     StreamingHLSService,
-    BlockchainService
+    BlockchainService,
+    SecretKeyService,
+    EncryptionService
 ],
   imports: [DbModule],
 })
