@@ -6,6 +6,7 @@ import {
   HttpException,
   HttpStatus,
   Param,
+  Query,
   UseInterceptors,
   UploadedFile,
   Res,
@@ -22,13 +23,13 @@ import { BlockchainService } from './blockchain.service.js';
 import { createReadStream } from 'fs';
 import { join } from 'path';
 import { StorageService } from './storage.service.js';
-import { StreamingHLSService } from './streamingHLS.service.js';
 import { UploadHLSService } from './uploadHLS.service.js';
 import { pipeline } from 'stream';
   import { promisify } from 'util';
   import { parseBuffer } from 'music-metadata';
 import { SecretKeyService } from './secretkey.service.js';
 import { EncryptionService } from './encryption.service.js';
+import crypto from 'crypto';
 
 @Controller('music-hls')
 export class MusicHLSController {
@@ -36,7 +37,6 @@ export class MusicHLSController {
     private readonly storageService: StorageService,
     private readonly musicService: MusicService,
     private readonly uploadService: UploadHLSService,
-    private readonly streamingService: StreamingHLSService,
     private readonly blockchainService: BlockchainService,
     private readonly secretKeyService: SecretKeyService,
     private readonly encryptionService: EncryptionService,
@@ -66,67 +66,73 @@ export class MusicHLSController {
       throw new HttpException("Vous n'êtes pas autorisé à accéder à ce contenu.", HttpStatus.FORBIDDEN);
     }*/
 
+      console.log('ici');
     // Récupérez le manifeste depuis IPFS
     const manifestStream = await this.storageService.downloadFromIPFS(cid);
 
-    // Convertir le stream AsyncIterable<Uint8Array> en un Buffer complet
-    const chunks: Uint8Array[] = [];
+    const manifestBuffer = await this.streamToBuffer(manifestStream);
+    const manifestContent = manifestBuffer.toString('utf-8');
 
-    for await (const chunk of manifestStream) {
-      chunks.push(chunk);
-    }
-    const manifestBuffer = Buffer.concat(chunks);
+    // Ajouter `exp` et `hmac` aux URLs des segments
+    const updatedManifest = this.addSecurityToManifest(manifestContent);
 
-    // Envoyer le manifeste directement dans la réponse
     res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
-    res.send(manifestBuffer);
+    res.send(updatedManifest);
   }
 
   @Get('hls/segment/:cid')
-async streamHLSSegment(
-  @Param('cid') cid: string,
-  @Res() res: Response,
-) {
-  try {
-    // Validation du CID
-    if (!cid) {
-      throw new HttpException('CID manquant', HttpStatus.BAD_REQUEST);
-    }
-
-    // Récupérer le segment chiffré depuis IPFS
-    const encryptedSegmentBuffer = await this.storageService.downloadAsBufferFromIPFS(cid);
-
-    if (!encryptedSegmentBuffer) {
-      throw new HttpException(
-        `Segment introuvable pour le CID : ${cid}`,
-        HttpStatus.NOT_FOUND,
-      );
-    }
-
-    // Déchiffrer le segment
-    const secretKey = this.secretKeyService.getSecretKey();
-    if (!secretKey) {
-      throw new HttpException(
-        'Clé secrète manquante',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-
-    const decryptedSegment = this.encryptionService.decryptData(encryptedSegmentBuffer, secretKey);
-
-    // Définir le type MIME et envoyer les données déchiffrées
-    res.setHeader('Content-Type', 'video/mp2t'); // MIME type pour segments HLS
-    res.send(decryptedSegment);
-  } catch (error) {
-    console.error('Erreur lors du streaming du segment HLS :', error);
-
-    if (!res.headersSent) {
-      res
-        .status(HttpStatus.INTERNAL_SERVER_ERROR)
-        .send("Erreur lors de la récupération du segment HLS.");
+  async streamHLSSegment(
+    @Param('cid') cid: string,
+    @Query('exp') exp: string,
+    @Query('hmac') hmac: string,
+    @Res() res: Response,
+  ) {
+    try {
+      // Valider le CID
+      if (!cid) {
+        throw new HttpException('CID manquant', HttpStatus.BAD_REQUEST);
+      }
+  
+      const secretKey = this.secretKeyService.getSecretKey();
+      if (!secretKey) {
+        throw new HttpException('Clé secrète manquante', HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+  
+      // Vérifiez si l'URL est expirée
+      const currentTime = Math.floor(Date.now() / 1000);
+      if (currentTime > parseInt(exp, 10)) {
+        throw new HttpException('URL expirée', HttpStatus.FORBIDDEN);
+      }
+  
+      // Valider la signature HMAC
+      const segmentPath = `/api/music-hls/hls/segment/${cid}`;
+      const isValidHmac = this.validateHmac(segmentPath, parseInt(exp, 10), hmac, secretKey);
+      if (!isValidHmac) {
+        throw new HttpException('Signature invalide', HttpStatus.FORBIDDEN);
+      }
+  
+      // Récupérer et décrypter le segment
+      const encryptedSegmentBuffer = await this.storageService.downloadAsBufferFromIPFS(cid);
+      if (!encryptedSegmentBuffer) {
+        throw new HttpException(`Segment introuvable pour le CID : ${cid}`, HttpStatus.NOT_FOUND);
+      }
+  
+      const decryptedSegment = this.encryptionService.decryptData(encryptedSegmentBuffer, secretKey);
+  
+      // Envoyer le segment déchiffré
+      res.setHeader('Content-Type', 'video/mp2t');
+      res.send(decryptedSegment);
+    } catch (error) {
+      console.error('Erreur lors du streaming du segment HLS :', error);
+  
+      if (!res.headersSent) {
+        res
+          .status(HttpStatus.INTERNAL_SERVER_ERROR)
+          .send("Erreur lors de la récupération du segment HLS.");
+      }
     }
   }
-}
+  
 
   
   @Get('hls/segment/:cid')
@@ -300,5 +306,54 @@ async uploadMusic(
       );
     }
   }
+
+  /**
+ * Convertit un stream en Buffer.
+ */
+private async streamToBuffer(stream: AsyncIterable<Uint8Array>): Promise<Buffer> {
+  const chunks: Uint8Array[] = [];
+  for await (const chunk of stream) {
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks);
+}
+
+/**
+ * Ajoute des paramètres `exp` et `hmac` aux URLs des segments dans le manifeste HLS.
+ */
+private addSecurityToManifest(manifest: string): string {
+  const lines = manifest.split('\n');
+  const secretKey = this.secretKeyService.getSecretKey();
+  const expiration = Math.floor(Date.now() / 1000) + 60 * 60; // 1 heure de validité
+
+  return lines
+    .map((line) => {
+      if (line.startsWith('/api/music-hls/hls/segment/')) {
+        const hmac = this.generateHmac(line, expiration, secretKey);
+        return `${line}?exp=${expiration}&hmac=${hmac}`;
+      }
+      return line;
+    })
+    .join('\n');
+}
+
+/**
+ * Génère un HMAC signé pour un segment.
+ */
+private generateHmac(path: string, expiration: number, secretKey: string): string {
+  return crypto
+    .createHmac('sha256', secretKey)
+    .update(`${path}:${expiration}`)
+    .digest('hex');
+}
+
+/**
+ * Vérifie un HMAC signé pour un segment.
+ */
+private validateHmac(path: string, expiration: number, providedHmac: string, secretKey: string): boolean {
+  const expectedHmac = this.generateHmac(path, expiration, secretKey);
+  return expectedHmac === providedHmac;
+}
+
   
 }
