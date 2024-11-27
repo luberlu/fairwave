@@ -140,8 +140,12 @@ export class MusicHLSController {
 
       console.log('Méta-données audio extraites:', audioMetadata);
       
+      const cleanedBuffer = await this.uploadService.preprocessMP3(file.buffer);
+
       // Étape 1 : Générer les segments et le manifest
-      const { segments, manifest } = await this.uploadService.generateHLS(file.buffer);
+      const { segments, manifest } = await this.uploadService.generateHLS(cleanedBuffer);
+
+      console.log('segments before upload => ', segments);
 
       // Étape 2 : Upload segments et manifest sur IPFS
       const { manifestCID, segmentCIDs } = await this.uploadService.uploadHLSFilesToIPFS(

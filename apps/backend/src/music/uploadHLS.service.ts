@@ -14,11 +14,42 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export class UploadHLSService {
   constructor(private readonly storageService: StorageService) {}
 
+  async preprocessMP3(fileBuffer: Buffer): Promise<Buffer> {
+    const tempInputPath = path.join(process.cwd(), 'temp', 'input.mp3');
+    const tempOutputPath = path.join(process.cwd(), 'temp', 'cleaned.mp3');
+  
+    // Sauvegarder le fichier temporairement
+    await fs.writeFile(tempInputPath, fileBuffer);
+  
+    // Commande pour extraire uniquement l'audio et supprimer les métadonnées inutiles
+    const command = `ffmpeg -i ${tempInputPath} -map 0:a -c:a libmp3lame -q:a 2 -map_metadata -1 ${tempOutputPath}`;
+    await new Promise<void>((resolve, reject) => {
+      exec(command, (error, stdout, stderr) => {
+        if (error) {
+          console.error('Erreur lors du nettoyage du fichier MP3 avec FFmpeg:', stderr);
+          reject(error);
+          return;
+        }
+        resolve();
+      });
+    });
+  
+    // Lire le fichier nettoyé
+    const cleanedBuffer = await fs.readFile(tempOutputPath);
+  
+    // Supprimer les fichiers temporaires
+    await fs.rm(tempInputPath).catch((err) => console.error('Erreur lors du nettoyage du fichier temporaire:', err));
+    await fs.rm(tempOutputPath).catch((err) => console.error('Erreur lors du nettoyage du fichier temporaire:', err));
+  
+    return cleanedBuffer;
+  }
+  
+
   async generateHLS(fileBuffer: Buffer): Promise<{ segments: Buffer[], manifest: Buffer }> {
-    const tempDir = path.join(process.cwd(), 'temp', `hls-${Date.now()}`); // Utilisation de process.cwd()
-    const outputDir = path.join(tempDir, 'hls'); // Répertoire HLS pour FFmpeg
-    const inputFilePath = path.join(tempDir, 'input.mp3'); // Chemin du fichier d'entrée
-    const manifestPath = path.join(outputDir, 'output.m3u8'); // Chemin du manifeste HLS
+    const tempDir = path.join(process.cwd(), 'temp', `hls-${Date.now()}`);
+    const outputDir = path.join(tempDir, 'hls');
+    const inputFilePath = path.join(tempDir, 'input.mp3');
+    const manifestPath = path.join(outputDir, 'output.m3u8');
   
     try {
       // Création des répertoires nécessaires
@@ -28,7 +59,7 @@ export class UploadHLSService {
       await fs.writeFile(inputFilePath, fileBuffer);
   
       // Commande FFmpeg pour générer HLS
-      const command = `ffmpeg -i ${inputFilePath} -hls_time 10 -hls_playlist_type vod -f hls ${manifestPath}`;
+      const command = `ffmpeg -i ${inputFilePath} -hls_time 10 -hls_playlist_type vod -force_key_frames "expr:gte(t,n_forced*10)" -f hls ${manifestPath}`;
       await new Promise<void>((resolve, reject) => {
         exec(command, (error, stdout, stderr) => {
           if (error) {
@@ -42,31 +73,35 @@ export class UploadHLSService {
   
       // Lire les fichiers HLS
       const files = await fs.readdir(outputDir);
-  
-      // Récupérer les segments et le manifeste sous forme de Buffers
       const segmentBuffers = await Promise.all(
         files
           .filter((file) => file.endsWith('.ts'))
           .map((file) => fs.readFile(path.join(outputDir, file)))
       );
-  
       const manifestBuffer = await fs.readFile(manifestPath);
   
-      // Nettoyer les fichiers temporaires après le traitement
-      // await fs.rm(tempDir, { recursive: true, force: true });
+      // Validation du manifest
+      const manifestContent = manifestBuffer.toString('utf-8');
+      if (!manifestContent.includes('#EXTINF')) {
+        throw new Error(`Manifest invalide : aucun segment trouvé. Contenu : ${manifestContent}`);
+      }
+  
+      const targetDurationMatch = manifestContent.match(/#EXT-X-TARGETDURATION:(\d+)/);
+      if (!targetDurationMatch || parseInt(targetDurationMatch[1], 10) <= 0) {
+        throw new Error(`Manifest invalide : durée cible incorrecte. Contenu : ${manifestContent}`);
+      }
   
       return { segments: segmentBuffers, manifest: manifestBuffer };
     } catch (error) {
       console.error('Erreur lors de la génération des fichiers HLS :', error);
-  
-      // Nettoyer les fichiers temporaires en cas d'erreur
+      throw error;
+    } finally {
       await fs.rm(tempDir, { recursive: true, force: true }).catch((cleanupError) => {
         console.error('Erreur lors du nettoyage des fichiers temporaires :', cleanupError);
       });
-  
-      throw error; // Relance l'erreur pour la gérer en amont
     }
   }
+  
 
   
 /**
