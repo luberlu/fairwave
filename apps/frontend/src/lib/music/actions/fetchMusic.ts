@@ -64,7 +64,12 @@ export async function fetchMusic(
 
 		// Vérifier si HLS est supporté nativement ou utiliser HLS.js
 		if (Hls.isSupported()) {
-			const hls = new Hls();
+			const hls = new Hls({
+				maxBufferLength: 30, // Augmentez ou réduisez selon les besoins
+				startLevel: 0, // Charge le niveau le plus bas pour démarrer rapidement
+				autoStartLoad: true, // Charge immédiatement
+				maxBufferSize: 60 * 1000 * 1000, // Taille max du buffer
+			});
 
 			// Charger le manifeste HLS dans HLS.js
 			hls.loadSource(manifestUrl);
@@ -75,16 +80,16 @@ export async function fetchMusic(
 			// Écoute des erreurs
 			hls.on(Hls.Events.ERROR, (event, data) => {
 				console.error('Erreur HLS.js :', data);
-				setStatus(`Erreur HLS : ${data.details}`);
+				// setStatus(`Erreur HLS : ${data.details}`);
 			});
 
 			// Écoute des événements de chargement
 			hls.on(Hls.Events.MANIFEST_PARSED, () => {
-				setStatus(`Lecture de la musique : ${cid}`);
-				audioElement.play().catch((error) => {
+				//setStatus(`Lecture de la musique : ${cid}`);
+				/*audioElement.play().catch((error) => {
 					console.error('Erreur lors de la lecture audio :', error);
 					setStatus(`Erreur : Impossible de lire l'audio.`);
-				});
+				});*/
 			});
 		} else if (audioElement.canPlayType('application/vnd.apple.mpegurl')) {
 			// Pour les navigateurs comme Safari avec support HLS natif
@@ -102,7 +107,7 @@ export async function fetchMusic(
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
 		console.error('Erreur :', errorMessage);
-		setStatus(`Erreur : ${errorMessage}`);
+		// setStatus(`Erreur : ${errorMessage}`);
 	}
 }
 

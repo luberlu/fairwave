@@ -1,5 +1,6 @@
 <script>
 	import '../app.css';
+	import AudioPlayerBar from '../components/AudioPlayerBar.svelte';
 	import Header from '../components/Header.svelte';
 
 	if (typeof window !== 'undefined') {
@@ -18,6 +19,7 @@
 	  </div>
 	</main>
   
+	<AudioPlayerBar />
 	<!-- Footer -->
 	<footer class="bg-gray-800 text-white text-center p-4 mt-auto">
 	  <div class="container mx-auto">
