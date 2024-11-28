@@ -37,6 +37,10 @@ export const playerState = persistedState('playerState', defaultPlayerState, {
  * @param updates Properties to update in the player state.
  */
 export function updatePlayerState(updates: Partial<PlayerState>): void {
+    if(updates.cid && updates.cid === playerState.value.cid){
+        return;
+    }
+    
 	playerState.value = { ...playerState.value, ...updates };
 }
 
