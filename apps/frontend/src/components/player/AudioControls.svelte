@@ -10,7 +10,7 @@
 
 <div class="controls">
 	<button onclick={ togglePlay } aria-label={ label }>
-		<Icon src={ iconPlay } class="h-6 w-6 text-black" />
+		<Icon src={ iconPlay } class="h-6 w-6" />
 	</button>
 </div>
 
@@ -19,5 +19,6 @@
 		display: flex;
 		align-items: center;
 		gap: 1rem;
+		color: #b7b7b7;
 	}
 </style>

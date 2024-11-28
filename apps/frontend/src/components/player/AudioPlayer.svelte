@@ -52,6 +52,20 @@
 		}
 	}
 
+	function onAudioProgress() {
+		if (audioElement) {
+			let buffered = audioElement.buffered;
+
+			if (buffered.length > 0) {
+				const bufferedEnd = buffered.end(buffered.length - 1);
+
+				updatePlayerState({
+					buffer: bufferedEnd,
+				});
+			}
+		}
+	}
+
 	function togglePlay() {
 		if (audioElement) {
 			if (audioElement.paused) {
@@ -90,6 +104,7 @@
 		bind:this={audioElement}
 		ontimeupdate={onTimeUpdate}
 		class="hidden"
+		onprogress={onAudioProgress}
 		onloadedmetadata={onMetadataLoaded}
 	></audio>
 </div>
@@ -100,11 +115,13 @@
 		align-items: center;
 		justify-content: space-between;
 		padding: 1rem 2rem;
-		background-color: #f8fafc;
-		border-top: 1px solid #e5e7eb;
+		background-color: #232323;
 		box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.05);
 		position: fixed;
 		bottom: 0;
 		width: 100%;
+	}
+	.metadata {
+		color:#b7b7b7;
 	}
 </style>

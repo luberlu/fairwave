@@ -8,7 +8,7 @@
 	}
 </script>
   
-  <div class="min-h-screen flex flex-col bg-gray-100 text-gray-900">
+  <div class="page min-h-screen flex flex-col bg-gray-100 text-gray-900">
 	<!-- Header -->
 	<Header/>
   
@@ -28,3 +28,8 @@
 	</footer>
   </div>
   
+  <style>
+	.page {
+		background-color: #171717;
+	}
+  </style>

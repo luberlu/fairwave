@@ -9,6 +9,7 @@ export interface PlayerState {
 	isPlaying: boolean; // Whether the player is actively playing
 	currentTime: number; // Current playback position in seconds
     duration: number;
+    buffer: number;
 }
 
 // Default state for the player
@@ -17,7 +18,8 @@ const defaultPlayerState: PlayerState = {
 	metadata: null,
 	isPlaying: false,
 	currentTime: 0,
-    duration: 0
+    duration: 0,
+    buffer: 0
 };
 
 // Create the persisted state
@@ -40,7 +42,7 @@ export function updatePlayerState(updates: Partial<PlayerState>): void {
     if(updates.cid && updates.cid === playerState.value.cid){
         return;
     }
-    
+
 	playerState.value = { ...playerState.value, ...updates };
 }
 

@@ -18,6 +18,10 @@
 		(playerState.value.duration ? (playerState.value.currentTime / (playerState.value.duration || 1)) * 100 : 0) + '%'
 	);
 
+	let bufferPercentage = $derived(
+		(playerState.value.buffer ? (playerState.value.buffer / playerState.value.duration) * 100 : 0) + '%'
+	);
+
 	function seek(event: MouseEvent | KeyboardEvent) {
 		if (audioElement) {
 			const progressBar = event.currentTarget as HTMLDivElement;
@@ -36,6 +40,7 @@
 		{progressionTime}
 	</div>
 	<div class="progress-bar" onclick={seek} onkeydown={seek} role="button" tabindex="0">
+		<div class="buffer-fill" style="width: {bufferPercentage}"></div>
 		<div
 			class="progress-fill"
 			style="width: {progressPercentage}"
@@ -57,20 +62,31 @@
 		width: 100%;
 		margin: 0 1rem;
 		max-width: 800px;
-		background: #e5e7eb;
-		height: 8px;
+		background: #464f0e;
+		height: 6px;
 		position: relative;
 		cursor: pointer;
 	}
+	.buffer-fill {
+		height: 100%;
+		background: #656f25;
+		width: 0;
+		position: absolute;
+		top: 0;
+		left: 0;
+		z-index: 0;
+	}
 	.progress-fill {
 		height: 100%;
-		background: #3b82f6;
+		background: #d5f029;
 		width: 0;
 		transition: width 0.05s linear;
+		z-index: 1;
+		position: absolute;
 	}
 	.timing {
 		font-size: 0.875rem;
-		color: #6b7280;
+		color: #b7b7b7;
 		margin-left: 1rem;
 		margin-right: 1rem;
 	}

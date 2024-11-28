@@ -11,9 +11,9 @@
 	}
 </script>
 
-<header class="bg-blue-700 p-4 text-white shadow-md">
+<header class="header p-4 text-white shadow-md">
 	<div class="container mx-auto flex items-center justify-between">
-		<h1 class="text-2xl font-bold">Fairwave</h1>
+		<h1 class="logo text-2xl font-bold">Fairwave</h1>
 		<div class="flex items-center space-x-4">
 			<nav class="flex space-x-4">
 				<a href="/" class="hover:underline">Accueil</a>
@@ -39,3 +39,13 @@
 		</div>
 	{/if}
 </header>
+
+<style>
+	.header {
+		background-color: #232323;
+	}
+
+	.logo {
+		color: #d5f029;
+	}
+</style>
