@@ -8,13 +8,13 @@
 	}
 </script>
   
-  <div class="page min-h-screen flex flex-col bg-gray-100 text-gray-900">
+  <div class="page min-h-screen flex flex-col text-gray-900">
 	<!-- Header -->
 	<Header/>
   
 	<!-- Contenu principal -->
 	<main class="container mx-auto flex-1 p-6">
-	  <div class="bg-white p-8 rounded-lg shadow-lg">
+	  <div class="p-8">
 		<slot /> <!-- Emplacement pour les pages enfants -->
 	  </div>
 	</main>

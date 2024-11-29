@@ -61,10 +61,11 @@ export async function uploadMusicOld(title: string, file: File | null): Promise<
 /**
  * Charge un fichier audio sur le serveur.
  * @param title - Titre de la musique.
+ * @param artistName - Nom de l'artiste
  * @param file - Fichier audio à uploader.
  * @returns Un objet indiquant le succès ou l'échec de l'opération.
  */
-export async function uploadMusic(title: string, file: File | null): Promise<{ success: boolean; cid?: string; message?: string }> {
+export async function uploadMusic(title: string, artistName: string, file: File | null): Promise<{ success: boolean; cid?: string; message?: string }> {
 	if (!file || !title) {
 		setStatus("Erreur : Titre ou fichier manquant.");
 		return { success: false, message: "Champs manquants" };
@@ -87,6 +88,7 @@ export async function uploadMusic(title: string, file: File | null): Promise<{ s
 	formData.append('title', title);
 	formData.append('file', file);
 	formData.append('userDid', did);
+	formData.append('artistName', artistName)
 
 	try {
 		const response = await fetch('/api/music/upload', {

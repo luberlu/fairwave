@@ -19,6 +19,6 @@
 		display: flex;
 		align-items: center;
 		gap: 1rem;
-		color: #b7b7b7;
+		color: white;
 	}
 </style>

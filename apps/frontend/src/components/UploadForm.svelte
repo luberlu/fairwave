@@ -2,6 +2,7 @@
     import { uploadMusic } from '../lib/music/actions/uploadMusic';
     import FileInfo from '../components/FileInfo.svelte';
     import { Icon, ArrowPath } from 'svelte-hero-icons';
+    import { userProfile } from '$lib/user/UserStore.svelte';
 
     let title = '';
     let file: File | null = null;
@@ -17,7 +18,7 @@
         isUploading = true; // Activer le chargement
         uploadStatus = ''; // Réinitialiser le statut
 
-        const result = await uploadMusic(title, file);
+        const result = await uploadMusic(title, userProfile.value.artistName, file);
         uploadStatus = result.success ? `Téléchargement réussi ! CID : ${result.cid}` : 'Erreur lors du téléchargement';
         
         isUploading = false; // Désactiver le chargement après le téléchargement

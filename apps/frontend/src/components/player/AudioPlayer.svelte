@@ -123,5 +123,10 @@
 	}
 	.metadata {
 		color:#b7b7b7;
+
+		p {
+			font-weight: 500;
+			color: white;
+		}
 	}
 </style>

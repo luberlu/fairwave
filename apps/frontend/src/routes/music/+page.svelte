@@ -2,6 +2,7 @@
 	import { playerState, updatePlayerState } from '$lib/player/playerStore';
 	import { fetchAllTracks, type MusicTrack } from '$lib/music/actions/fetchMusic';
 	import { onMount } from 'svelte';
+	import { formatTime } from '$lib/utils/time';
 
 	let groupedTracks: Record<string, MusicTrack[]> = {};
 	let statusMessage: string = 'Chargement des morceaux...';
@@ -71,21 +72,42 @@
 		justify-content: flex-start;
 		align-items: center;
 		padding: 1rem;
-		border-radius: 0.375rem;
-		background-color: #f8fafc;
-		border: 1px solid #e5e7eb;
+        background-color: #232323;
 		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 		cursor: pointer;
 		transition: background-color 0.2s;
 	}
 
+    .track-item-inner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+
+        .left {
+            display: flex;
+
+            span {
+                margin: 0 0.4rem;
+            }
+        }
+
+        .right {
+            display: flex;
+        }
+    }
+
 	.track-item:hover {
-		background-color: #e5e7eb;
+		background-color: #1c1c1c;
 	}
+
+    h2 {
+        border-bottom: solid 1px white;
+    }
 </style>
 
-<div class="p-6 bg-white rounded-lg shadow-md">
-	<h2 class="text-2xl font-bold mb-4">Tous les morceaux</h2>
+<div class="p-6 text-white">
+	<h2 class="text-1xl font-bold mb-4">All tracks</h2>
 
 	<!-- Status message -->
 	{#if statusMessage}
@@ -97,7 +119,7 @@
 		<div>
 			{#each Object.entries(groupedTracks) as [artistDid, tracks]}
 				<div class="artist-section">
-					<div class="artist-title text-blue-500">Artiste DID: {artistDid}</div>
+					<div class="artist-title text-white">Artiste DID: {artistDid}</div>
 					<ul class="space-y-4">
 						{#each tracks as track}
 							<li>
@@ -112,14 +134,17 @@
 										}
 									}}
 								>
-									<div>
-										<h3 class="text-lg font-semibold">{track.title}</h3>
-										{#if track.duration}
-											<p class="text-sm text-gray-500">Durée: {Math.round(track.duration)} secondes</p>
-										{/if}
-										{#if track.timestamp}
-											<p class="text-sm text-gray-500">Ajouté le: {new Date(track.timestamp).toLocaleString()}</p>
-										{/if}
+									<div class="track-item-inner">
+                                        <div class="left">
+                                            <h3 class="text-lg font-semibold">{track.title}</h3>
+                                            <span>-</span>
+                                            <h4 class="text-lg font-semibold">{track.artist}</h4>
+                                        </div>
+                                        <div class="right">
+                                            {#if track.duration}
+											    <p class="text-sm text-gray-500">{formatTime(track.duration)}</p>
+										    {/if}
+                                        </div>
 									</div>
 								</button>
 							</li>
